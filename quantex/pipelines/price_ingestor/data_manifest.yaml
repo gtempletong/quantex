@@ -1,0 +1,11 @@
+
+
+
+    # --- RENTA VARIABLE / ETFs ---
+  - id: EEM_PE_RATIO
+    source: yahoo_finance
+    ticker: EEM
+    description: "P/E Ratio TTM del ETF de Mercados Emergentes"
+    type: pe_ratio
+    
+  

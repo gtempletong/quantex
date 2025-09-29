@@ -1,0 +1,113 @@
+/* Estilos para el header de informes con logo de Gavin Templeton */
+
+.report-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 30px;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    border-bottom: 3px solid #007acc;
+    margin-bottom: 30px;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.logo-container svg {
+    height: 50px;
+    width: auto;
+    margin-right: 20px;
+}
+
+.report-info {
+    flex-grow: 1;
+    text-align: center;
+}
+
+.report-title {
+    color: #ffffff;
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0 0 5px 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.report-date {
+    color: #cccccc;
+    font-size: 14px;
+    margin: 0;
+    font-weight: 300;
+}
+
+.report-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+    min-width: 150px;
+}
+
+.report-id {
+    color: #888888;
+    font-size: 12px;
+    margin: 0;
+    font-family: 'Courier New', monospace;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .report-header {
+        flex-direction: column;
+        text-align: center;
+        padding: 20px;
+    }
+    
+    .logo-container {
+        margin-bottom: 15px;
+    }
+    
+    .report-info {
+        margin-bottom: 15px;
+    }
+    
+    .report-meta {
+        align-items: center;
+    }
+    
+    .logo-container svg {
+        height: 40px;
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+}
+
+/* Estilos para templates de email (Mesa Redonda) */
+.email-header {
+    background-color: #1E1E1E;
+    padding: 20px;
+    text-align: center;
+    border-radius: 8px 8px 0 0;
+}
+
+.email-header .logo-container {
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.email-header .logo-container svg {
+    height: 45px;
+    margin-right: 0;
+}
+
+.email-header .report-title {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.email-header .report-date {
+    font-size: 13px;
+}
+

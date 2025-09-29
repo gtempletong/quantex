@@ -1,0 +1,42 @@
+# quantex/config/document_classifiers.yaml
+# Este es el nuevo "cerebro" del clasificador de documentos.
+
+- doc_type: "informe_cochilco_cobre"
+  source_name: "Informe Semanal del Cobre (Cochilco)"
+  filename_keywords:
+    - "informe-del-mercado-internacional-del-cobre" # Keyword del nombre de archivo
+  content_keywords:
+    - "comisión chilena del cobre"
+    - "cochilco"
+  ai_prompt_description: "Un informe semanal detallado sobre el mercado del cobre, incluyendo precios, inventarios y análisis de mercado, publicado por Cochilco."
+  is_active: true
+
+- doc_type: "IPOM Banco Central de Chile"
+  source_name: "Informe de Política Monetaria (BCCh)"
+  filename_keywords:
+    - "ipom"
+  content_keywords:
+    - "informe de política monetaria"
+    - "banco central de chile"
+  ai_prompt_description: "Un informe trimestral de política monetaria del Banco Central de Chile que analiza la inflación y las proyecciones económicas."
+  is_active: true
+
+- doc_type: "FED FOMC"
+  source_name: "Minutas de la Reunión de la FED (FOMC)"
+  filename_keywords:
+    - "fomcminutes"
+  content_keywords:
+    - "federal open market committee"
+    - "federal reserve"
+  ai_prompt_description: "Las minutas de la reunión del Comité Federal de Mercado Abierto de la Reserva Federal de EE.UU., detallando las discusiones sobre política monetaria."
+  is_active: true
+
+- doc_type: "informe_bcentral_cl"
+  source_name: "Comunicado del Banco Central de Chile (RPM)"
+  filename_keywords:
+    - "rpm" # Reunión de Política Monetaria
+  content_keywords:
+    - "reunión de política monetaria"
+    - "consejo del banco central"
+  ai_prompt_description: "Un comunicado oficial del Banco Central de Chile después de una Reunión de Política Monetaria (RPM), usualmente anunciando decisiones sobre la tasa de interés."
+  is_active: true
