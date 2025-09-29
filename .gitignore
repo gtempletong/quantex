@@ -44,6 +44,7 @@ MANIFEST
 .env.production
 .env.staging
 credentials.json
+google_credentials.json
 service-account.json
 *.pem
 *.key
