@@ -1,0 +1,34 @@
+
+
+- entity: "DXY"
+  research_question_template: "Resume el panorama del Dólar Index (DXY) hoy, citando drivers clave (rendimientos UST, expectativas de la Fed, risk-on/off) y eventos del día. Indica nivel actual, cambio diario y sesgo táctico."
+
+- entity: "Dolar/EURO"
+  research_question_template: "Resume el panorama EUR/USD hoy con foco en diferenciales de tasas, sorpresas macro (PMI, IPC, empleo) y forward guidance del BCE/Fed. Indica spot, cambio diario y sesgo."
+
+  entity: "Economia Norteamericana"
+  research_question_template: "Resume el mercado laboral de EE.UU. hoy con últimos datos NFP, tasa de desempleo, salarios promedio y JOLTS. Explica implicancias para la política de la Fed en el corto plazo."
+
+- entity: "Economia Norteamericana"
+  research_question_template: "Resume el estado de la economía de EE.UU. hoy destacando crecimiento (PIB real), inflación (IPC/PCE), actividad (PMI/ISM) y consumo. Señala sorpresas recientes y sesgo macro."
+
+- entity: "Economia Chilena"
+  research_question_template: "Resume la economía chilena hoy: IPC, Imacec, mercado laboral y expectativas de crecimiento. Explica el impacto en TPM y en CLP."
+
+- entity: "Economia China"
+  research_question_template: "Resume economía china hoy con foco en actividad (PMI oficial/privado), crédito (TSF), vivienda y estímulos. Indica implicancias para metales/commodities."
+
+- entity: "Política Monetaria Fed"
+  research_question_template: "Según CME FedWatch, ¿cuál es la probabilidad actual de recorte/alza/mantención en la próxima reunión de la Fed? Incluye fecha, distribución de probabilidades y cambios vs. 1 semana."
+  
+  entity: "Política Monetaria Fed"
+  research_question_template: "Extrae 2–3 citas o puntos clave del último comunicado del FOMC o discurso relevante (ej. Powell), indicando fecha y fuente."
+  
+  entity: "Política Monetaria Fed"
+  research_question_template: "Resume el consenso reciente de bancos de inversión (GS, JPM, etc.) sobre la trayectoria de tasas de la Fed (próximos 6–12 meses), citando fuentes."
+
+- entity: "Política Monetaria BCCh"
+  research_question_template: "¿Cuáles fueron los puntos más relevantes del último IPoM del BCCh? Resume inflación, crecimiento, balance de riesgos y trayectoria de TPM."
+
+- entity: "Política Monetaria BCCh"
+  research_question_template: "Resume las últimas declaraciones públicas del presidente del BCCh (fecha y contexto) y su implicancia para la TPM."

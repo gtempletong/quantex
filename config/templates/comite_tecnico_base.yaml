@@ -1,0 +1,143 @@
+# Template Base para Comités Técnicos
+# Variables disponibles: {{ticker}}, {{title_suffix}}, {{tickers}}, {{chart_days}}, {{main_ticker_symbol}}
+
+report_keyword: "{{ticker}}"
+display_title: "Comité Técnico {{title_suffix}}"
+template_file: "verticals/analisis_tecnico/template_technical_committee.html"
+is_active: true
+
+# Series de datos de mercado
+market_data_series:
+{{tickers_block}}
+
+# Requisitos de datos y configuración
+data_requirements:
+  config_params:
+    chart_period_days: {{chart_days}}
+{{main_ticker_symbol_line}}
+  technical_analysis_params:
+    macd_periods: [12, 26, 9]
+    moving_averages: [20, 50, 200]
+    rsi_period: 14
+
+# Pipeline de procesamiento
+processing_pipeline:
+  - tool_name: "add_technical_indicators"
+    parameters:
+      output_key: "enriched_data"
+      source_key: "raw_data"
+      technical_analysis_params:
+        indicators_to_calculate: ["RSI", "MACD"]
+        moving_averages: [20, 50, 200]
+
+# Pipeline de síntesis (especialistas)
+synthesis_pipeline:
+  - specialist_name: "Chartista"
+    prompt_file: "verticals/analisis_tecnico/prompt_chartista.txt"
+    inputs: ["ticker", "analysis_date", "chart_url_clean"]
+    output_key: "analisis_chartista"
+  
+  - specialist_name: "Quant"
+    prompt_file: "verticals/analisis_tecnico/prompt_quant.txt"
+    inputs: ["ticker", "analysis_date", "numerical_data"]
+    output_key: "analisis_quant"
+  
+  - specialist_name: "Jefe de Mesa (CIO)"
+    prompt_file: "verticals/analisis_tecnico/prompt_jefe_de_mesa.txt"
+    inputs: ["ticker", "analysis_date", "analisis_chartista", "analisis_quant"]
+    output_key: null
+
+# Esquema de salida
+output_schema:
+  type: "object"
+  required:
+    - "analisis_chartista"
+    - "analisis_quant"
+    - "recomendacion_final"
+    - "resumen_cio"
+    - "confianza_final"
+    - "niveles_operativos"
+    - "expert_context_output"
+  
+  properties:
+    analisis_chartista:
+      type: "object"
+      description: "El análisis detallado del especialista en acción del precio (Chartista)."
+      required:
+        - "situacion_actual"
+        - "patrones_y_niveles"
+        - "puntos_de_inflexion"
+        - "sintesis_y_perspectiva"
+      properties:
+        situacion_actual:
+          type: "string"
+        patrones_y_niveles:
+          type: "string"
+        puntos_de_inflexion:
+          type: "string"
+        sintesis_y_perspectiva:
+          type: "string"
+    
+    analisis_quant:
+      type: "object"
+      description: "El análisis detallado del especialista cuantitativo (Quant)."
+      required:
+        - "analisis_momento"
+        - "analisis_tendencia"
+        - "sintesis_cuantitativa"
+        - "senal_tecnica_final"
+        - "confianza"
+      properties:
+        analisis_momento:
+          type: "string"
+        analisis_tendencia:
+          type: "string"
+        sintesis_cuantitativa:
+          type: "string"
+        senal_tecnica_final:
+          type: "string"
+        confianza:
+          type: "string"
+    
+    recomendacion_final:
+      type: "string"
+      description: "El veredicto final y accionable del CIO (ej. 'Alcista', 'Neutral-Alcista', etc.)."
+    
+    resumen_cio:
+      type: "string"
+      description: "El párrafo del Jefe de Inversiones (CIO) que fusiona los análisis del Chartista y el Quant."
+    
+    confianza_final:
+      type: "string"
+      description: "El nivel de confianza del CIO en su recomendación (ej. 'Alta', 'Media', 'Baja')."
+    
+    niveles_operativos:
+      type: "object"
+      description: "Los niveles de precio clave sugeridos por el CIO para una estrategia."
+      properties:
+        precio_entrada_sugerido:
+          type: "number"
+        stop_loss_sugerido:
+          type: "number"
+        objetivo_precio_1:
+          type: "number"
+    
+    expert_context_output:
+      type: "object"
+      description: "Memoria del CIO para la próxima ronda de análisis"
+      required:
+        - "current_view_label"
+        - "core_thesis_summary"
+      properties:
+        current_view_label:
+          type: "string"
+          description: "Etiqueta de sentimiento final del CIO"
+        core_thesis_summary:
+          type: "string"
+          description: "Resumen de una frase de la tesis principal"
+
+# Campos opcionales (None en Supabase)
+required_reports: []
+visualization_pipeline: []
+drivers_map: []
+fuentes_tacticas: []

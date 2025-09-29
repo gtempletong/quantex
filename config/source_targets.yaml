@@ -1,0 +1,82 @@
+# =============================================================================
+# CONFIGURACIÓN DE FUENTES RSS - SOURCE MONITOR
+# =============================================================================
+# Este archivo define las fuentes RSS que el sistema monitorea para obtener
+# noticias financieras y de commodities relevantes para el análisis de mercados.
+#
+# Estructura:
+# - Cada fuente tiene un ID único, publisher, URL y palabras clave de filtrado
+# - Las fuentes se agrupan por publisher para facilitar el mantenimiento
+# - Solo las fuentes con is_active: true se procesan
+# =============================================================================
+
+description: "Configuración centralizada de fuentes RSS para el Source Monitor"
+version: "2.0"
+last_updated: "2025-09-28"
+
+# =============================================================================
+# FUENTES RSS CONFIGURADAS
+# =============================================================================
+rss_sources:
+  
+  # -------------------------------------------------------------------------
+  # SMM (Shanghai Metals Market) - Commodities y Metales
+  # -------------------------------------------------------------------------
+  - id: smm_lithium
+    publisher: SMM
+    target_name: "Noticias del Litio"
+    source_url: "https://rss.metal.com/news/the_latest.xml"
+    link_css_selector: "RSS_FEED"
+    is_active: true
+    filter_keywords:
+      - "lithium carbonate"
+      - "lithium"
+      - "lepidolite" 
+      - "spodumene"
+
+  - id: smm_copper
+    publisher: SMM
+    target_name: "Noticias del Cobre"
+    source_url: "https://rss.metal.com/news/the_latest.xml"
+    link_css_selector: "RSS_FEED"
+    is_active: true
+    filter_keywords:
+      - "cobre"
+      - "copper"
+
+  # -------------------------------------------------------------------------
+  # FXStreet - Noticias de Forex y Mercados Financieros
+  # -------------------------------------------------------------------------
+  - id: fxstreet_forex_news
+    publisher: FXStreet
+    target_name: "Noticias de Forex"
+    source_url: "https://www.fxstreet.com/rss/news"
+    link_css_selector: "RSS_FEED"
+    is_active: true
+    filter_keywords:
+      - "forex"
+      - "divisas"
+      - "CLP"
+      - "EUR"
+      - "DXY"
+    # Configuración avanzada para FXStreet (filtros específicos)
+    filter_config:
+      filter_logic: "specific_or_general"
+      general_keywords:
+        - "forex"
+        - "divisas"
+      specific_keywords:
+        - "CLP"
+        - "EUR/USD"
+        - "DXY"
+      exclude_keywords:
+        - "CHF"
+        - "JPY"
+        - "AUD"
+        - "CAD"
+        - "GBP"
+        - "NZD"
+      target_pairs:
+        - "EUR/USD"
+        - "USD/CLP"
+        - "CLP/USD"

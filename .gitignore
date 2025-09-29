@@ -1,0 +1,150 @@
+# Entornos Virtuales
+/venv/
+/env/
+/.venv/
+/.env/
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Archivos de configuración de IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archivos sensibles (¡nunca subas tus secretos!)
+*.env
+.env
+.env.local
+.env.production
+.env.staging
+credentials.json
+service-account.json
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Logs y archivos temporales
+*.log
+logs/
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Archivos de base de datos
+*.db
+*.sqlite
+*.sqlite3
+
+# Archivos de configuración específicos de Quantex
+config/secrets/
+config/credentials/
+*.config.local
+*.settings.local
+
+# Archivos de backup
+*.bak
+*.backup
+*_backup/
+backup/
+
+# Archivos de cache específicos
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Archivos de Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Archivos de modelos de ML (pueden ser grandes)
+models/
+*.model
+*.pkl
+*.joblib
+
+# Archivos de datos grandes
+data/raw/
+data/processed/
+*.csv
+*.xlsx
+*.parquet
+*.h5
+*.hdf5
+
+# Archivos de reportes generados
+reports/
+output/
+exports/
+*.pdf
+*.html
+
+# Archivos de Pinecone
+pinecone_index/
+*.pinecone
+
+# Archivos de Selenium/Playwright
+screenshots/
+downloads/
+playwright-report/
+test-results/
+
+# Archivos de Node.js (si hay frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos de Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+docker-compose.override.yml
+
+# Archivos de sistema
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Chrome profiles y datos de navegador
+chrome_profile/
+*/chrome_profile/
+*profile*/
+**/chrome_profile/
+*.pma
+*.journal

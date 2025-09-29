@@ -1,0 +1,17 @@
+{
+  "name": "phantombuster-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Phantombuster integration - Quantex LinkedIn Automation",
+  "main": "phantombuster-mcp-server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node phantombuster-mcp-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.0"
+  },
+  "keywords": ["mcp", "phantombuster", "model-context-protocol", "quantex", "linkedin", "automation"],
+  "author": "Quantex",
+  "license": "MIT"
+}
