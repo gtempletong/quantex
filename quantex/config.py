@@ -17,7 +17,7 @@ class Config:
     
     # APIs Financieras
     EODHD_API_URL = os.getenv("EODHD_API_URL", "https://eodhd.com/api/eod")
-    BCE_API_URL = os.getenv("BCE_API_URL", "https://sdw-wsrest.ecb.europa.eu/service/data")
+    BCE_API_URL = os.getenv("BCE_API_URL", "https://data-api.ecb.europa.eu")
     BCENTRAL_API_URL = os.getenv("BCENTRAL_API_URL", "https://si3.bcentral.cl/SieteRestWS/SieteRestWS.ashx")
     BCCH_API_URL = os.getenv("BCCH_API_URL", "https://api.bcentral.cl/v1/series")
     

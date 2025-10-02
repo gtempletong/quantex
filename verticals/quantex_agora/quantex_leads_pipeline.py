@@ -135,14 +135,14 @@ class QuantexLeadsPipeline:
                 logger.info(f"  {i+1}. Container completo: {container}")
                 logger.info(f"     Status: {container.get('status', 'N/A')} (ID: {container.get('id', 'N/A')})")
             
-            successful_container = None
-            # Probar con el container más reciente primero
-            for container in reversed(containers):  # Empezar por el más reciente
-                last_end_status = container.get('lastEndStatus', '')
-                if last_end_status == 'success':
-                    successful_container = container
-                    logger.info(f"🔍 Probando container: {container['id']}")
-                    break
+            # Seleccionar SIEMPRE el container más reciente con success
+            def _ts_key(ct):
+                return ct.get('lastRunAt') or ct.get('createdAt') or ''
+
+            sorted_cts = sorted(containers, key=_ts_key, reverse=True)
+            successful_container = next((ct for ct in sorted_cts if ct.get('lastEndStatus') == 'success'), None)
+            if successful_container:
+                logger.info(f"🔍 Container elegido (más reciente con success): {successful_container['id']}")
             
             if not successful_container:
                 raise Exception("No se encontró un container exitoso")
@@ -196,11 +196,22 @@ class QuantexLeadsPipeline:
                 if not clean_record:
                     continue
                 
-                # Verificar duplicados por vmid
+                # Verificar duplicados por URL normalizada (llave principal) y luego por VMID
+                norm_url = (clean_record.get('linkedin_profile_url') or '').strip()
+                if norm_url:
+                    try:
+                        existing_url = self.supabase.table(self.table_name).select('id').eq('linkedin_profile_url', norm_url).execute()
+                        if existing_url.data:
+                            logger.info(f"Lead duplicado encontrado por URL ({norm_url}) - Saltando")
+                            duplicates += 1
+                            continue
+                    except Exception as _e:
+                        logger.warning(f"No se pudo verificar duplicado por URL en Supabase: {_e}")
+
                 vmid = clean_record.get('vmid')
                 if vmid:
-                    existing = self.supabase.table(self.table_name).select('id').eq('vmid', vmid).execute()
-                    if existing.data:
+                    existing_vmid = self.supabase.table(self.table_name).select('id').eq('vmid', vmid).execute()
+                    if existing_vmid.data:
                         logger.info(f"Lead duplicado encontrado (VMID: {vmid}) - Saltando")
                         duplicates += 1
                         continue
@@ -311,16 +322,22 @@ class QuantexLeadsPipeline:
             existing_records = airtable_table.all()
 
             def detect_linkedin_field_key(records: list) -> str:
-                # 1) Usar ID hardcodeado si está definido
+                """Detecta la clave del campo de URL de LinkedIn.
+                Intenta ID hardcodeado; si no aparece en los dicts, cae a detección por nombre."""
                 hardcoded = (LINKEDIN_FIELD_ID_PROSPECTOS or '').strip()
                 if hardcoded:
-                    return hardcoded
-                # 2) Buscar un campo que contenga 'linkedin' en el nombre
+                    # Comprobar si los records usan IDs como claves
+                    for rec in records[:3]:
+                        if hardcoded in rec.get('fields', {}):
+                            logger.info(f"Usando ID hardcodeado para LinkedIn: {hardcoded}")
+                            return hardcoded
+                    # Si no se encontró por ID, caer a nombre
+                    logger.info("ID hardcodeado no presente en records; intentando detección por nombre 'linkedin'")
                 for rec in records:
                     for key in rec.get('fields', {}).keys():
                         if 'linkedin' in key.lower():
+                            logger.info(f"Detectado campo por nombre: {key}")
                             return key
-                # 3) Fallback común
                 return 'LinkedIn Profile URL'
 
             linkedin_field_key = detect_linkedin_field_key(existing_records)
@@ -347,11 +364,15 @@ class QuantexLeadsPipeline:
                 norm = _normalize_linkedin_url(url_val)
                 if norm:
                     existing_contacts_map[norm] = record['id']
+
+            logger.info(f"🔎 Prospectos Airtable mapeados por URL: {len(existing_contacts_map)}")
             
             # Preparar registros para crear
             records_to_create = []
             processed_candidate_ids = []
             
+            already_exists = 0
+            to_create = 0
             for candidate in candidates:
                 linkedin_url = candidate.get('linkedin_profile_url')
                 if not linkedin_url:
@@ -361,6 +382,7 @@ class QuantexLeadsPipeline:
                     continue
                 # Solo crear si no existe
                 if norm_candidate not in existing_contacts_map:
+                    to_create += 1
                     # Construcción usando IDs de campos donde están definidos (sin wrapper 'fields')
                     record_fields = {
                         "fldYFIXVUfrYL6aIp": candidate.get('full_name', ''),  # Nombre
@@ -376,6 +398,8 @@ class QuantexLeadsPipeline:
                     records_to_create.append(record_fields)
                 
                 processed_candidate_ids.append(candidate.get('id'))
+                if norm_candidate in existing_contacts_map:
+                    already_exists += 1
             
             # Crear registros en Airtable
             success_count = 0
@@ -385,6 +409,8 @@ class QuantexLeadsPipeline:
                 airtable_table.batch_create(records_to_create, typecast=True)
                 success_count = len(records_to_create)
                 logger.info(f"✅ {success_count} registros creados exitosamente")
+            else:
+                logger.info(f"✅ No hay nuevos prospectos para crear (ya existentes: {already_exists}, a crear: {to_create})")
             
             # Actualizar estado en Supabase
             if success_count > 0:

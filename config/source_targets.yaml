@@ -50,7 +50,7 @@ rss_sources:
   - id: fxstreet_forex_news
     publisher: FXStreet
     target_name: "Noticias de Forex"
-    source_url: "https://www.fxstreet.com/rss/news"
+    source_url: "http://xml.fxstreet.com/news/forex-news/index.xml"
     link_css_selector: "RSS_FEED"
     is_active: true
     filter_keywords:
@@ -59,6 +59,7 @@ rss_sources:
       - "CLP"
       - "EUR"
       - "DXY"
+      - "FED'S"
     # Configuración avanzada para FXStreet (filtros específicos)
     filter_config:
       filter_logic: "specific_or_general"

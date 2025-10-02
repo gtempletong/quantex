@@ -298,6 +298,77 @@ def forward_fill_business_days_for_tickers(tickers: list[str]) -> dict:
         summary[t] = forward_fill_business_days_for_ticker(t)
     return summary
 
+
+def forward_fill_monthly_series_for_ticker(ticker: str) -> dict:
+    """Rellena días hábiles con el último valor mensual disponible.
+    
+    Para series mensuales (como expectativas TPM), toma el último dato
+    y lo propaga a todos los días hábiles hasta hoy, para que los agentes
+    siempre tengan acceso a las "expectativas vigentes".
+    
+    - Rellena desde el último dato hasta hoy
+    - Solo días hábiles (no fines de semana)
+    - Upsert idempotente (series_id,timestamp)
+    """
+    try:
+        series_id = _get_series_id_by_ticker(ticker)
+        if not series_id:
+            return {"ticker": ticker, "filled": 0, "status": "series_not_found"}
+
+        # Último dato existente
+        last_res = supabase.table('time_series_data').select('timestamp,value').eq('series_id', series_id).order('timestamp', desc=True).limit(1).execute()
+        if not last_res or not last_res.data:
+            return {"ticker": ticker, "filled": 0, "status": "no_existing_data"}
+
+        last_ts_raw = last_res.data[0]['timestamp']
+        last_ts_str = str(last_ts_raw)[:10]
+        last_val = last_res.data[0]['value']
+        last_date = datetime.strptime(last_ts_str, '%Y-%m-%d').date()
+
+        today = datetime.now().date()
+        if last_date >= today:
+            return {"ticker": ticker, "filled": 0, "status": "up_to_date"}
+
+        # Para series mensuales: rellenar DESDE el último dato hasta hoy
+        # (incluye el día del último dato en el rango)
+        bdays = pd.bdate_range(start=last_date, end=today, freq='B')
+        
+        # Excluir el primer día (último dato ya existe)
+        if len(bdays) > 1:
+            bdays = bdays[1:]
+        else:
+            return {"ticker": ticker, "filled": 0, "status": "no_business_days_to_fill"}
+        
+        records = []
+        for d in bdays:
+            records.append({
+                'series_id': series_id,
+                'timestamp': d.strftime('%Y-%m-%d'),
+                'value': last_val,
+                'ticker': ticker,
+            })
+
+        filled = 0
+        if records:
+            upsert = supabase.table('time_series_data').upsert(records, on_conflict='series_id,timestamp').execute()
+            if upsert and upsert.data is not None:
+                filled = len(records)
+        
+        logging.info(f"ForwardFillMonthly[{ticker}]: desde {last_date} hasta {today} -> {filled} días hábiles")
+        return {"ticker": ticker, "filled": filled, "status": "ok", "last_value": last_val, "from": last_date.strftime('%Y-%m-%d'), "to": today.strftime('%Y-%m-%d')}
+
+    except Exception as e:
+        logging.error(f"ForwardFillMonthly[{ticker}] error: {e}")
+        return {"ticker": ticker, "filled": 0, "status": f"error: {e}"}
+
+
+def forward_fill_monthly_series_for_tickers(tickers: list[str]) -> dict:
+    """Aplica forward fill mensual a múltiples tickers."""
+    summary = {}
+    for t in tickers:
+        summary[t] = forward_fill_monthly_series_for_ticker(t)
+    return summary
+
 def orchestrate_all_syncs():
     """
     Orquesta la sincronización de todas las fuentes de datos AUTOMÁTICAS
@@ -446,12 +517,36 @@ def orchestrate_all_syncs():
 
             all_ff_tickers = smm_tickers + cochilco_inventory_tickers + bcch_tickers
             ff_summary = forward_fill_business_days_for_tickers(all_ff_tickers)
-            report.add_result("ForwardFill", True, ff_summary)
-            logging.info(f"ForwardFill resumen: {ff_summary}")
+            report.add_result("ForwardFill Daily", True, ff_summary)
+            logging.info(f"ForwardFill Daily resumen: {ff_summary}")
         except Exception as e:
             error_msg = f"Error en ForwardFill centralizado: {e}"
             logging.error(error_msg)
-            report.add_result("ForwardFill", False, error=error_msg)
+            report.add_result("ForwardFill Daily", False, error=error_msg)
+
+        # --- Forward Fill para series mensuales (Expectativas TPM) ---
+        print("\n--- ▶️  Forward Fill (Monthly Series) para expectativas mensuales ... ---")
+        try:
+            # Series mensuales de expectativas del BCCh
+            monthly_bcch_tickers = [
+                'bcch_expectativas_tpm_prox_reunion',
+                'bcch_expectativas_tpm_subsiguiente_reunion'
+            ]
+
+            ff_monthly_summary = forward_fill_monthly_series_for_tickers(monthly_bcch_tickers)
+            report.add_result("ForwardFill Monthly", True, ff_monthly_summary)
+            logging.info(f"ForwardFill Monthly resumen: {ff_monthly_summary}")
+            
+            # Log detallado de cada serie mensual
+            for ticker, result in ff_monthly_summary.items():
+                if result.get('status') == 'ok':
+                    print(f"   ✅ {ticker}: {result.get('filled')} días rellenados con valor {result.get('last_value')}")
+                else:
+                    print(f"   ⚠️ {ticker}: {result.get('status')}")
+        except Exception as e:
+            error_msg = f"Error en ForwardFill Monthly: {e}"
+            logging.error(error_msg)
+            report.add_result("ForwardFill Monthly", False, error=error_msg)
 
         print("\n\n--- ✅ Orquestación Automática Completada Exitosamente ---")
         print("ℹ️  Nota: La ingesta de Renta Fija local (PDF) se ejecuta por separado.")

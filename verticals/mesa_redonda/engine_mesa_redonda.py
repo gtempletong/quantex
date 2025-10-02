@@ -681,15 +681,15 @@ def _get_start_date_n_business_days_ago(n_days: int) -> datetime:
 @register_handler("publish_final_report")
 def _handle_publish(parameters: dict, state: dict, **kwargs) -> dict:
     """
-    (Versión Publicador Inteligente 4.0)
-    Decide si promover un borrador directamente o si es necesaria una re-síntesis
-    basado en la existencia de un Briefing Estratégico nuevo.
+    (Versión Publicador 5.0 - Promoción Directa)
+    Política: Al publicar el informe final NUNCA se re-sintetiza.
+    Siempre se promueve el último borrador a final y se consumen los briefings ACTIVE.
     """
     topic = parameters.get("report_keyword")
     if not topic:
         return jsonify({"response_blocks": [{"type": "text", "content": "No se especificó un tópico para publicar."}]})
 
-    print(f"🚀 [Publicador Inteligente 4.0] Iniciando para: '{topic}'...")
+    print(f"🚀 [Publicador 5.0] Iniciando para: '{topic}'...")
     
     # 1. ENCONTRAR EL ÚLTIMO BORRADOR
     latest_draft = db.get_latest_draft_artifact(topic)
@@ -699,121 +699,40 @@ def _handle_publish(parameters: dict, state: dict, **kwargs) -> dict:
     draft_timestamp = datetime.fromisoformat(latest_draft['created_at'])
     print(f"  -> 📜 Borrador encontrado, creado en: {draft_timestamp}")
 
-    # 2. BUSCAR UN BRIEFING ESTRATÉGICO ACTIVE (no por fecha)
-    briefing_is_new = False
+    # Política: siempre promoción directa del último borrador
+    print("  -> ✅ DECISIÓN: Promoción directa del último borrador (sin re-síntesis).")
     try:
-        # Buscar briefing ACTIVE (mismo criterio que _run_synthesis_engine)
-        res_active = db.supabase.table('nodes').select('id, content, properties').eq('type', 'Documento').eq('properties->>source', 'Strategic_Alignment_Session').eq('properties->>topic', topic).eq('properties->>status', 'ACTIVE').order('properties->>timestamp', desc=True).execute()
-        
-        if res_active and res_active.data:
-            print(f"  -> 🗣️  Briefing ACTIVE encontrado ({len(res_active.data)} nodo(s))")
-            briefing_is_new = True
-            print("  -> ❗️ DECISIÓN: Se ha encontrado un briefing ACTIVE. Se requiere re-síntesis.")
-        else:
-            print("  -> 🟡 No hay briefing ACTIVE para este tópico.")
-    except Exception as e:
-        print(f"  -> ❌ Error consultando briefing ACTIVE: {e}")
+        final_artifact = db.promote_draft_to_final(latest_draft['id'])
+        if not final_artifact:
+            raise Exception("Fallo al promover el borrador.")
 
-    if not briefing_is_new:
-        # --- ESCENARIO A: PROMOCIÓN SIMPLE ---
-        print("  -> ✅ DECISIÓN: No hay nuevas directrices. Realizando promoción simple del borrador.")
+        # Consumir briefings ACTIVE al publicar
         try:
-            final_artifact = db.promote_draft_to_final(latest_draft['id'])
-            if not final_artifact:
-                raise Exception("Fallo al promover el borrador.")
-            
-            # (Lógica de actualización de memoria, igual que antes)
-            # ...
-            
-            # --- NUEVO: Marcar briefing ACTIVE como CONSUMED al publicar ---
-            try:
-                final_artifact_id = final_artifact['id']
-                published_ts = datetime.now(timezone.utc).isoformat()
-                # Buscar todos los briefings ACTIVE para este tópico y marcarlos consumidos
-                active_nodes = db.supabase.table('nodes').select('id, properties').eq('type', 'Documento').eq('properties->>source', 'Strategic_Alignment_Session').eq('properties->>topic', topic).eq('properties->>status', 'ACTIVE').execute()
-                if active_nodes and active_nodes.data:
-                    for n in active_nodes.data:
-                        props = n.get('properties', {}) or {}
-                        props['status'] = 'CONSUMED'
-                        props['consumed_by_artifact_id'] = final_artifact_id
-                        props['consumed_at'] = published_ts
-                        db.supabase.table('nodes').update({'properties': props}).eq('id', n['id']).execute()
-                    print(f"  -> ✅ {len(active_nodes.data)} briefing(s) marcado(s) como CONSUMED.")
-                else:
-                    print("  -> ℹ️ No se encontraron briefings ACTIVE para consumir.")
-            except Exception as _e:
-                print(f"  -> ⚠️ No se pudo marcar briefing como CONSUMED: {_e}")
-
-            return jsonify({
-                "response_blocks": [
-                    {"type": "html", "content": final_artifact['full_content'], "display_target": "panel"},
-                    {"type": "text", "content": f"✅ Informe '{topic}' publicado exitosamente desde el borrador existente.", "display_target": "chat"}
-                ], "artifact_id": final_artifact['id']
-            })
-        except Exception as e:
-            traceback.print_exc()
-            return jsonify({"response_blocks": [{"type": "text", "content": f"Error en la promoción simple: {e}"}]})
-    else:
-        # --- ESCENARIO B: RE-SÍNTESIS COMPLETA (MODO EDITOR JEFE) ---
-        print("  -> ⚙️  Activando modo 'Editor Jefe' para re-sintetizar el informe final...")
-        try:
-            # (Aquí pegamos la lógica completa de la función de re-síntesis que ya construimos)
-            report_def = db.get_report_definition_by_topic(topic)
-            latest_materia_prima = db.get_latest_materia_prima_dossier(topic)
-            dossier = Dossier.from_dict(latest_materia_prima['dossier_content'])
-            
-            curated_context = _run_dossier_curator(topic, report_def)
-            if curated_context:
-                dossier.qualitative_context = curated_context
-
-            synthesis_result = _run_synthesis_engine(dossier, report_def, topic)
-            dossier.ai_content = synthesis_result
-            
-            final_artifact = db.insert_generated_artifact(
-                report_keyword=topic, artifact_content="<p>Renderizando...</p>",
-                artifact_type=f'report_{topic.replace(" ", "_")}_final',
-                results_packet=dossier.to_dict(),
-                source_dossier_id=latest_materia_prima['id']
-            )
             final_artifact_id = final_artifact['id']
+            published_ts = datetime.now(timezone.utc).isoformat()
+            active_nodes = db.supabase.table('nodes').select('id, properties').eq('type', 'Documento').eq('properties->>source', 'Strategic_Alignment_Session').eq('properties->>topic', topic).eq('properties->>status', 'ACTIVE').execute()
+            if active_nodes and active_nodes.data:
+                for n in active_nodes.data:
+                    props = n.get('properties', {}) or {}
+                    props['status'] = 'CONSUMED'
+                    props['consumed_by_artifact_id'] = final_artifact_id
+                    props['consumed_at'] = published_ts
+                    db.supabase.table('nodes').update({'properties': props}).eq('id', n['id']).execute()
+                print(f"  -> ✅ {len(active_nodes.data)} briefing(s) marcado(s) como CONSUMED.")
+            else:
+                print("  -> ℹ️ No se encontraron briefings ACTIVE para consumir.")
+        except Exception as _e:
+            print(f"  -> ⚠️ No se pudo marcar briefing como CONSUMED: {_e}")
 
-            final_html = _build_html_from_template(
-                template_file=report_def.get("template_file"), synthesis_result=synthesis_result,
-                dossier=dossier, report_def=report_def, new_artifact_id=final_artifact_id
-            )
-            if final_html:
-                db.supabase.table('generated_artifacts').update({'full_content': final_html}).eq('id', final_artifact_id).execute()
-
-            # --- NUEVO: Marcar briefing ACTIVE como CONSUMED al publicar ---
-            try:
-                published_ts = datetime.now(timezone.utc).isoformat()
-                active_nodes = db.supabase.table('nodes').select('id, properties').eq('type', 'Documento').eq('properties->>source', 'Strategic_Alignment_Session').eq('properties->>topic', topic).eq('properties->>status', 'ACTIVE').execute()
-                if active_nodes and active_nodes.data:
-                    for n in active_nodes.data:
-                        props = n.get('properties', {}) or {}
-                        props['status'] = 'CONSUMED'
-                        props['consumed_by_artifact_id'] = final_artifact_id
-                        props['consumed_at'] = published_ts
-                        db.supabase.table('nodes').update({'properties': props}).eq('id', n['id']).execute()
-                    print(f"  -> ✅ {len(active_nodes.data)} briefing(s) marcado(s) como CONSUMED.")
-                else:
-                    print("  -> ℹ️ No se encontraron briefings ACTIVE para consumir.")
-            except Exception as _e:
-                print(f"  -> ⚠️ No se pudo marcar briefing como CONSUMED: {_e}")
-            
-            _save_learnings_to_knowledge_graph(dossier, topic)
-            # (Aquí también va la lógica de actualización de memoria)
-            # ...
-
-            return jsonify({
-                "response_blocks": [
-                    {"type": "html", "content": final_html, "display_target": "panel"},
-                    {"type": "text", "content": f"✅ Informe final para '{topic}' re-sintetizado y publicado.", "display_target": "chat"}
-                ], "artifact_id": final_artifact_id
-            })
-        except Exception as e:
-            traceback.print_exc()
-            return jsonify({"response_blocks": [{"type": "text", "content": f"Error en la re-síntesis final: {e}"}]}) 
+        return jsonify({
+            "response_blocks": [
+                {"type": "html", "content": final_artifact['full_content'], "display_target": "panel"},
+                {"type": "text", "content": f"✅ Informe '{topic}' publicado exitosamente desde el borrador existente.", "display_target": "chat"}
+            ], "artifact_id": final_artifact['id']
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"response_blocks": [{"type": "text", "content": f"Error en la promoción: {e}"}]})
     
 
 def _handle_edit(state, reformulated_message, user_message, **kwargs):

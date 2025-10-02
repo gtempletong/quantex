@@ -22,12 +22,35 @@ from quantex.config import Config
 # --- FIN DE LA CORRECCIÓN ---
 
 
-def sync_bce_rates():
+def _get_with_retries(url: str, params: dict, headers: dict, max_retries: int = 3):
+    """Realiza GET con reintentos exponenciales ante errores transitorios (503/429/5xx)."""
+    backoffs = [1, 3, 5, 10]
+    attempt = 0
+    last_exc = None
+    while attempt < max_retries:
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=30)
+            # Si el BCE responde 503/429, considerarlo transitorio
+            if resp.status_code in (429, 503):
+                raise requests.HTTPError(f"{resp.status_code} {resp.reason}")
+            resp.raise_for_status()
+            return resp
+        except Exception as e:
+            last_exc = e
+            wait_s = backoffs[min(attempt, len(backoffs)-1)]
+            print(f"    -> ⚠️ Error transitorio ({e}). Reintentando en {wait_s}s (intento {attempt+1}/{max_retries})...")
+            time.sleep(wait_s)
+            attempt += 1
+    # Si agotó reintentos, propagar última excepción
+    raise last_exc
+
+
+def sync_bce_rates() -> bool:
     SOURCE_NAME = 'bce'
     # ✅ SEGURO: Obtener URL desde configuración
     API_ENDPOINT = Config.get_bce_url()
     
-    print(f"--- 🇪🇺 Iniciando Sincronización Inteligente de Tasas desde {SOURCE_NAME} ---")
+    print(f"--- Iniciando Sincronización Inteligente de Tasas desde {SOURCE_NAME} ---")
 
     if not supabase:
         print("❌ Error: Falta la conexión a Supabase.")
@@ -43,6 +66,7 @@ def sync_bce_rates():
             
         print(f"-> 🎯 Instrumentos a sincronizar: {[item['name'] for item in instruments_to_sync]}")
         
+        any_saved = False
         for instrument in instruments_to_sync:
             instrument_key = instrument['ticker']
             
@@ -57,18 +81,35 @@ def sync_bce_rates():
                 start_date = datetime(2004, 1, 1)
             else:
                 print(f"  -> 🔄 Ticker existente. Modo: Actualización Incremental para {instrument['name']}...")
-                start_date = end_date - timedelta(days=30)
+                start_date = end_date - timedelta(days=90)  # Ventana amplia para amortiguar baches del BCE
             
-            url = f"{API_ENDPOINT}/YC/{instrument_key}"
+            url = f"{API_ENDPOINT}/service/data/YC/{instrument_key}"
             params = {
                 'startPeriod': start_date.strftime('%Y-%m-%d'),
                 'endPeriod': end_date.strftime('%Y-%m-%d')
             }
-            headers = {'Accept': 'application/vnd.sdmx.genericdata+xml;version=2.1'}
+            headers = {
+                'Accept': 'application/vnd.sdmx.genericdata+xml;version=2.1',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
 
             print(f"    -> Consultando API del BCE para el período {params['startPeriod']} a {params['endPeriod']}...")
-            api_response = requests.get(url, params=params, headers=headers)
-            api_response.raise_for_status()
+            # Reintentos ante 503/429/5xx
+            try:
+                api_response = _get_with_retries(url, params, headers, max_retries=4)
+            except Exception as api_error:
+                # Fallback: si falla el período reciente, probar con ventana más antigua
+                print(f"    -> ⚠️ Error en período reciente: {api_error}")
+                print(f"    -> 🔄 Intentando período alternativo (últimos 180 días)...")
+                fallback_params = params.copy()
+                fallback_start = end_date - timedelta(days=180)
+                fallback_params['startPeriod'] = fallback_start.strftime('%Y-%m-%d')
+                try:
+                    api_response = _get_with_retries(url, fallback_params, headers, max_retries=2)
+                    print(f"    -> ✅ Fallback exitoso: usando datos de {fallback_params['startPeriod']}")
+                except Exception as fallback_error:
+                    print(f"    -> ❌ Fallback también falló: {fallback_error}")
+                    continue
             
             root = ET.fromstring(api_response.content)
             
@@ -95,19 +136,29 @@ def sync_bce_rates():
                     })
            
             if records_to_upsert:
-                # --- INICIO DE LA CORRECCIÓN ---
-                # Usamos la función especializada en lugar del upsert directo
                 print(f"    -> Guardando {len(records_to_upsert)} registros...")
-                # Usar upsert directo con on_conflict para manejar duplicados
-                supabase.table('fixed_income_trades').upsert(records_to_upsert, on_conflict='instrument_id,trade_date').execute()
-                # --- FIN DE LA CORRECCIÓN ---
+                try:
+                    # Alinear con EODHD y PDF parser: usar helper centralizado
+                    ok = upsert_fixed_income_trades(records_to_upsert)
+                    if ok:
+                        print(f"    -> ✅ Upsert completado (helper).")
+                        any_saved = True
+                    else:
+                        print(f"    -> ⚠️ Upsert reportó fallo (helper). Revisa logs previos.")
+                except Exception as up_e:
+                    print(f"    -> 💥 Error en upsert a 'fixed_income_trades' (helper): {up_e}")
             else:
                 print(f"    -> ℹ️ No se encontraron nuevos registros para el período solicitado.")
 
             print(f"    -> ✅ Sincronización para {instrument['name']} completada.")
-            time.sleep(0.5)
+            time.sleep(2)  # Pausa más larga para evitar detección anti-bot
 
         print("\n--- ✅ Sincronización de Tasas del BCE Finalizada ---")
+        return any_saved
 
     except Exception as e:
         print(f"--- 💥 ERROR CRÍTICO en la sincronización del BCE: {e} ---")
+        return False
+
+if __name__ == "__main__":
+    sync_bce_rates()

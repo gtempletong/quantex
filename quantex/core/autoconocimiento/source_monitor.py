@@ -400,24 +400,14 @@ def process_rss_feed(target: dict, ingestion_engine: KnowledgeGraphIngestionEngi
                 print(f"      ⏭️  Sin contenido tras scrapeo")
                 continue
             
-            # 4.4 Screening IA con contenido completo
-            screening_result = screening_agent.screen_with_full_content(
-                title=title,
-                summary=summary,
-                content=full_content_md,
-                url=entry_link,
-                source=target.get('publisher', 'Unknown'),
-                feed_similarity=0.0,  # Eliminado: IA detecta duplicados
-                historical_similarity=0.0,  # Simplificado: solo URL exacta
-                similar_titles=[],  # Simplificado: sin títulos similares
-                feed_context=[]  # Eliminado: redundante
-            )
-            
-            # 4.5 Decisión final
-            if not screening_result.get('relevant', False):
-                skipped_screening += 1
-                print(f"      ❌ Rechazado por screening IA")
-                continue
+            # 4.4 OMITIR screening IA con contenido completo (política actual)
+            print("      ⚠️ Screening IA omitido por política: se procederá a ingesta tras prefiltro.")
+            screening_result = {
+                "relevant": True,
+                "confidence": 1.0,
+                "novelty_score": 0.0,
+                "impact_level": "unclassified"
+            }
             
             # 4.6 Proceder con ingesta
             print(f"      ✅ Aprobado: {screening_result['impact_level']} impact")
@@ -459,14 +449,14 @@ def process_rss_feed(target: dict, ingestion_engine: KnowledgeGraphIngestionEngi
 
 
 def run_automated_monitoring():
-    print("\n--- 📰 Vigilancia Automática de RSS (Versión 16.0 - Optimizado) ---")
+    print("\n--- Vigilancia Automatica de RSS (Version 16.0 - Optimizado) ---")
     
     # Inicializar el nuevo motor de ingesta centralizado
-    print("🏭 Inicializando Motor de Ingesta Centralizado...")
+    print("Inicializando Motor de Ingesta Centralizado...")
     ingestion_engine = KnowledgeGraphIngestionEngine()
     
     # Cargar configuración desde YAML
-    print("📋 Cargando configuración de fuentes desde YAML...")
+    print("Cargando configuracion de fuentes desde YAML...")
     config_loader = get_config_loader()
     
     try:
@@ -519,7 +509,7 @@ def scrape_article_with_retries(url: str) -> str:
 
 # --- CÓDIGO DE ARRANQUE ---
 if __name__ == '__main__':
-    print("\n--- 🤖 Iniciando Vigilante de Fuentes (v11.0 Método Robusto) ---")
+    print("\n--- Iniciando Vigilante de Fuentes (v11.0 Metodo Robusto) ---")
     ai_services.initialize()
     run_automated_monitoring()
-    print("\n--- ✅ Vigilante ha finalizado su ronda. ---")
+    print("\n--- Vigilante ha finalizado su ronda. ---")
