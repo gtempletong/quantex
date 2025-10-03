@@ -1,6 +1,18 @@
 {
+  "name": "airtable-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Airtable integration - Quantex Data Management",
+  "main": "airtable-mcp-server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node airtable-mcp-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
-    "pg": "^8.16.3"
-  }
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "airtable": "^0.14.0"
+  },
+  "keywords": ["mcp", "airtable", "model-context-protocol", "quantex", "database"],
+  "author": "Quantex",
+  "license": "MIT"
 }

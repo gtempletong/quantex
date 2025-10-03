@@ -7,17 +7,27 @@ import requests
 import os
 import time
 import logging
+import sys
 from datetime import datetime
 from typing import List, Dict, Optional
 import json
 
-# Configurar logging
+# Configurar salida estándar a UTF-8 en Windows
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
+# Configurar logging (UTF-8 en archivo y consola)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('phantom_base_manager.log'),
-        logging.StreamHandler()
+        logging.FileHandler('phantom_base_manager.log', encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger(__name__)

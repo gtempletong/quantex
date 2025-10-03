@@ -1,0 +1,27 @@
+{
+  "name": "brevo-mcp-server",
+  "version": "1.0.0",
+  "description": "Model Context Protocol server for Brevo email marketing automation",
+  "main": "brevo-mcp-server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node brevo-mcp-server.js",
+    "dev": "node brevo-mcp-server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.4.0"
+  },
+  "keywords": [
+    "mcp",
+    "brevo",
+    "email",
+    "marketing",
+    "automation"
+  ],
+  "author": "Quantex Team",
+  "license": "MIT"
+}
+
+
+
+

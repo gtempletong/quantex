@@ -1,0 +1,398 @@
+# MktNews scrape 20250921_131533
+
+Fuente: https://mktnews.net/index.html
+
+## 1. Weekly Recap & Preview
+- Time: `18:24:45`
+
+The Week in Review (September 19, 2025)
+
+Global Markets & Monetary Policy
+- Fed Rate Cut: Federal Reserve lowered rates 25 bps to 4–4.25%, first cut in 2025; further two cuts expected later this year.
+- US Economic Indicators: Job growth slowed (22k jobs added in August), retail sales up 0.6%, unemployment projected to reach 4.5% by year-end.
+- Stocks: S&P 500 +1.22% (record high), NASDAQ +2.21%, Dow +1.05%.
+- Commodities: Gold hit a record $3,707/oz; silver rose 3% to $43/oz; Deutsche Bank forecasts average gold $4,000/oz for 2026.
+- Currencies: Chinese yuan strengthened beyond central bank reference rate, signaling bullish sentiment.
+
+US-China Trade & Geopolitics
+- Trump-Xi Call: Described as pragmatic and constructive; topics included TikTok, trade, fentanyl, and Russia-Ukraine.
+- Future Meetings: Agreed to meet at APEC Summit; reciprocal visits planned for early next year.
+- TikTok Framework: Shift to US-controlled ownership expected; Oracle retains cloud deal.
+- Trade Requests: Xi urged fair business environment, avoiding unilateral trade restrictions.
+
+Technology & AI
+- Nvidia-Intel Partnership: $5B investment to co-develop gaming and AI CPUs; Intel shares surged 28%.
+- China Actions vs Nvidia: Domestic firms barred from Nvidia AI chip purchases; anti-monopoly probe ongoing.
+- Huawei AI Expansion: Launch of SuperPod tech connecting 15,488 Ascend chips; new Ascend chip series planned 2026–2028.
+- Oracle-Meta Deal: Negotiating potential $20B multiyear cloud contract for AI training.
+- Google/Alphabet: Market cap topped $3T; Gemini app leads Apple App Store downloads.
+- OpenAI Hardware: First consumer device expected late 2026–early 2027; Luxshare to assemble.
+
+China Economic & Domestic Policy
+- Economic Slowdown: August industrial output +5.2% Y/Y, retail sales +3.4% Y/Y—both below forecasts.
+- Property Sector: New home prices down 0.3% MoM; Shanghai adjusting property tax pilot policies.
+- Consumption Measures: Boosting services via credit support, visa-free expansion, and school schedule adjustments.
+- Semiconductors: SMIC tests first domestically produced DUV lithography machine for 7nm chips.
+- Corporate Moves: Baidu HK shares +15% after chip upgrade; CATL H-shares hit HK$500 record high.
+- High-Profile Briefing: PBOC, NFRA, CSRC, SAFE to report on “High-Quality Completion of the 14th Five-Year Plan” Sept 22.
+
+The Week Ahead (September 22–26, 2025)
+
+Key Economic Releases & Surveys
+- PMI Flash Data: Critical readings for US, Europe, Japan, India, Australia to assess growth, jobs, inflation.
+- US Core PCE: Friday release to signal inflation trends and future Fed policy.
+- Other US Releases: GDP revisions, durable goods, home sales, inventories, personal income/spending.
+- Europe: Eurozone, Germany, France, Spain consumer confidence and GDP; UK PMI for policy impact.
+- Asia-Pacific: Inflation, industrial production, and export data across Hong Kong, Malaysia, Singapore, Taiwan, South Korea.
+- Central Bank Actions: SNB interest rate decision (Switzerland), Banxico rate decision (Mexico).
+
+## 2. MIRAN: I SEE RATE CUTS CONTINUING FOR THE NEXT SEVERAL MONTHS
+- Time: `17:35:49`
+
+MIRAN: I SEE RATE CUTS CONTINUING FOR THE NEXT SEVERAL MONTHS
+
+## 3. S&P 500 Surpasses 6,660 as Fed Rate-Cut Optimism Extends Rally
+- Time: `17:10:45`
+
+Wall Street closed the week with major indexes hitting record highs, driven by expectations for additional Federal Reserve rate cuts. The S&P 500 surpassed 6,660, led by tech megacaps, while smaller-cap stocks dipped after a record close. Analysts see potential for consolidation but forecast the S&P 500 could reach 6,800–7,500 by mid-2026. Low volatility kept the $5 trillion triple-witching options expiry from significantly affecting prices.
+
+## 4. Oracle in Talks With Meta on $20 Billion AI Cloud Deal
+- Time: `17:03:08`
+
+Oracle Corp. is negotiating a multiyear cloud computing agreement with Meta Platforms Inc. valued at roughly $20 billion. The deal would provide Meta with computing resources for training and deploying artificial intelligence models. Sources familiar with the discussions say the total commitment could rise and terms may change before a final agreement. The talks highlight Oracle’s expanding role as a major infrastructure provider for AI operations.
+
+## 5. UNOFFICIALLY, FOR THE WEEK, THE S&P 500 GAINED 1.22%, THE NASDAQ ROSE 2.21%, AND THE DOW CLIMBED 1.05%
+- Time: `17:01:30`
+
+UNOFFICIALLY, FOR THE WEEK, THE S&P 500 GAINED 1.22%, THE NASDAQ ROSE 2.21%, AND THE DOW CLIMBED 1.05%
+
+## 6. ORACLE TO PROVIDE META COMPUTING POWER IN MULTIYEAR AGREEMENT
+- Time: `16:54:55`
+
+ORACLE TO PROVIDE META COMPUTING POWER IN MULTIYEAR AGREEMENT
+
+## 7. ORACLE IN TALKS WITH META ON $20B AI CLOUD COMPUTING DEAL
+- Time: `16:54:41`
+
+ORACLE IN TALKS WITH META ON $20B AI CLOUD COMPUTING DEAL
+
+## 8. CFTC Weekly Speculator Positions – Week Ending September 16, 2025
+- Time: `16:35:51`
+
+U.S. Treasuries
+2-Year Treasury Futures: net short ↑ 28,509 → 1,403,470
+5-Year Treasury Futures: net short ↓ 117,989 → 2,436,774
+10-Year Treasury Futures: net short ↓ 38,673 → 819,299
+Treasury Bonds Futures: net short ↓ 4,470 → 94,138
+UltraBond Treasury Futures: net short ↑ 12,686 → 278,167
+Equities
+S&P 500 CME: net short ↑ 55,766 → 475,397
+S&P 500 CME: net long ↑ 9,074 → 891,634
+Energy
+WTI Oil: net long ↑ 30,855 → 5,951
+Natural Gas: net long ↑ 4,173 → 255,405
+Agriculture
+Cocoa: net long ↑ 2,567 → 57
+Wheat: net short ↓ 7,536 → 92,168
+Sugar: net short ↓ 37,431 → 146,096
+Corn: net short ↓ 27,885 → 207,414
+Cotton: net short ↓ 9,139 → 65,507
+Soybean: net short ↓ 14,173 → 57,140
+Coffee: net long ↑ 3,126 → 25,665
+Metals
+Gold: net long ↓ 5,933 → 160,483
+Copper: net long ↑ 4,642 → 42,612
+Silver: net long ↑ 360 → 38,128
+Currencies
+British Pound: net short → -6,580
+Euro: net long → 117,759
+Japanese Yen: net long → 61,411
+Swiss Franc: net short → -26,040
+Crypto
+Bitcoin: net long → 20
+
+## 9. WHITE HOUSE OFFICIAL: TRUMP WILL SIGN A PROCLAMATION TO OVERHAUL THE H-1B VISA PROGRAM AND REQUIRE A $100,000 FEE FOR AP
+- Time: `16:26:32`
+
+WHITE HOUSE OFFICIAL: TRUMP WILL SIGN A PROCLAMATION TO OVERHAUL THE H-1B VISA PROGRAM AND REQUIRE A $100,000 FEE FOR APPLICATIONS
+
+## 10. MUSK ON REPORTS OF XAI RAISING $10 BLN AT $200 BLN VALUATION: FAKE NEWS
+- Time: `16:14:23`
+
+MUSK ON REPORTS OF XAI RAISING $10 BLN AT $200 BLN VALUATION: FAKE NEWS. XAI IS NOT RAISING ANY CAPITAL RIGHT NOW
+
+## 11. SPOT SILVER RISES NEARLY 3% TO $43.04/OZ
+- Time: `15:47:02`
+
+SPOT SILVER RISES NEARLY 3% TO $43.04/OZ
+
+## 12. SPOT GOLD RISES 1% TO $3,678/OZ
+- Time: `14:49:25`
+
+SPOT GOLD RISES 1% TO $3,678/OZ
+
+## 13. Senate Democrats Block GOP Stopgap Funding Bill, Raising Shutdown Risk
+- Time: `14:39:33`
+
+Senate Democrats blocked a Republican-led stopgap measure to fund the U.S. government through Nov. 21, with the vote failing 48-44 in the 100-member Senate, short of the 60 needed. Democrats demand more than $1 trillion in healthcare subsidies, including extended ACA support and restored Medicaid funding. The GOP argued the Democratic proposal is unrealistic, warning that a lapse in agreement could trigger a partial government shutdown after Sept. 30.
+
+## 14. ELONS MUSK'S XAI RAISES $10 BILLION AT $200 BILLION VALUATION - CNBC CITING SOURCES
+- Time: `14:28:08`
+
+ELONS MUSK'S XAI RAISES $10 BILLION AT $200 BILLION VALUATION - CNBC CITING SOURCES
+
+## 15. STOPGAP SPENDING BILL TO AVERT GOVERNMENT SHUTDOWN FALLS SHORT IN U.S
+- Time: `14:23:04`
+
+STOPGAP SPENDING BILL TO AVERT GOVERNMENT SHUTDOWN FALLS SHORT IN U.S. SENATE
+
+## 16. SENATE REPUBLICAN LEADER THUNE: THE SENATE WILL TAKE ANOTHER VOTE ON THE HOUSE-PASSED STOPGAP SPENDING BILL AT SOME POIN
+- Time: `14:22:16`
+
+SENATE REPUBLICAN LEADER THUNE: THE SENATE WILL TAKE ANOTHER VOTE ON THE HOUSE-PASSED STOPGAP SPENDING BILL AT SOME POINT, BUT NOT TODAY
+
+## 17. US
+- Time: `14:01:21`
+
+Weekly Total Oil Rig Count (Sep.19) Actual 418 Forecast -- Previous 416 GOLD/CRUDE
+
+## 18. BYTEDANCE: WILL WORK IN ACCORDANCE WITH APPLICABLE LAWS TO ENSURE TIKTOK REMAINS AVAILABLE TO AMERICAN USERS THROUGH TIK
+- Time: `13:37:04`
+
+BYTEDANCE: WILL WORK IN ACCORDANCE WITH APPLICABLE LAWS TO ENSURE TIKTOK REMAINS AVAILABLE TO AMERICAN USERS THROUGH TIKTOK U.S - TIKTOK ON X
+
+## 19. Xi-Trump Talk at a Glance: TikTok, Trade, and Shared Prosperity
+- Time: `12:51:06`
+
+1. Call Overview
+- First direct conversation since June.
+- Described as pragmatic, positive, and constructive.
+2. Strategic Outlook & Cooperation
+- Xi: U.S. and China can achieve mutual success and shared prosperity, benefiting both countries and the world.
+- Emphasis on peace, historical ties, and long-term cooperation.
+3. Trade & Business
+- Xi urged the U.S. to avoid unilateral trade restrictions that could undermine multi-round negotiations.
+- On TikTok: China respects firms’ decisions and welcomes negotiations under market rules to reach a solution aligned with Chinese law and balanced interests.
+- Xi hopes for an open, fair, non-discriminatory environment for Chinese firms in the U.S.
+4. Trump’s Statement
+- Call covered trade, fentanyl, Russia-Ukraine, and TikTok.
+- TikTok deal approved.
+- Both leaders agreed to meet at the APEC Summit in South Korea; Trump to visit China early next year, Xi to visit the U.S. at an appropriate time.
+
+## 20. TRUMP: XI PLANS TO COME TO THE US AT AN APPROPRIATE TIME
+- Time: `12:27:05`
+
+TRUMP: XI PLANS TO COME TO THE US AT AN APPROPRIATE TIME
+
+## 21. TRUMP: PLAN TO GO TO CHINA IN THE EARLY PART OF NEXT YEAR
+- Time: `12:26:36`
+
+TRUMP: PLAN TO GO TO CHINA IN THE EARLY PART OF NEXT YEAR
+
+## 22. TRUMP ON XI CALL: WILL BE SPEAKING AGAIN BY PHONE
+- Time: `12:24:58`
+
+TRUMP ON XI CALL: WILL BE SPEAKING AGAIN BY PHONE
+
+## 23. TRUMP: JUST COMPLETED A VERY PRODUCTIVE CALL WITH PRESIDENT XI
+- Time: `12:24:49`
+
+TRUMP: JUST COMPLETED A VERY PRODUCTIVE CALL WITH PRESIDENT XI
+
+## 24. MIRAN: MY RATE PROJECTION NEXT YEAR IS NOT SO FAR FROM OTHERS
+- Time: `12:18:06`
+
+MIRAN: MY RATE PROJECTION NEXT YEAR IS NOT SO FAR FROM OTHERS
+
+## 25. MIRAN: IF THE PRESIDENT TOLD ME I'D STAY BEYOND JANUARY, I'D RESIGN FROM THE WHITE HOUSE IMMEDIATELY
+- Time: `12:06:54`
+
+MIRAN: IF THE PRESIDENT TOLD ME I'D STAY BEYOND JANUARY, I'D RESIGN FROM THE WHITE HOUSE IMMEDIATELY
+
+## 26. MIRAN: HOPING TO PERSUADE SOME FED COLLEAGUES AS WE GO ALONG
+- Time: `12:05:10`
+
+MIRAN: HOPING TO PERSUADE SOME FED COLLEAGUES AS WE GO ALONG
+
+## 27. MIRAN: LOW-DOT RATE PROJECTION IN FED FORECASTS WAS MINE
+- Time: `12:04:14`
+
+MIRAN: LOW-DOT RATE PROJECTION IN FED FORECASTS WAS MINE
+
+## 28. XI ASKS FOR US TO REFRAIN FROM TAKING UNILATERAL TRADE MEASURES
+- Time: `12:01:04`
+
+XI ASKS FOR US TO REFRAIN FROM TAKING UNILATERAL TRADE MEASURES
+
+## 29. XI: HOPES US PROVIDE FAIR BUSINESS ENVIRONMENT FOR CHINESE COS
+- Time: `11:56:44`
+
+XI: HOPES US PROVIDE FAIR BUSINESS ENVIRONMENT FOR CHINESE COS
+
+## 30. XI: US SHOULD AVOID TRADE RESTRICTVE MEASURES
+- Time: `11:56:21`
+
+XI: US SHOULD AVOID TRADE RESTRICTVE MEASURES
+
+## 31. MICRON SHARES DOWN 4.7%, ON TRACK TO SNAP 12-DAY GAINING STREAK
+- Time: `11:04:27`
+
+MICRON SHARES DOWN 4.7%, ON TRACK TO SNAP 12-DAY GAINING STREAK
+
+## 32. OPENAI PLANS TO SPEND $100B ON BACKUP SERVERS: INFORMATION
+- Time: `11:02:04`
+
+OPENAI PLANS TO SPEND $100B ON BACKUP SERVERS: INFORMATION
+
+## 33. TRUMP HAS ASKED JUSTICES TO LET HIM FIRE COOK AMID COURT FIGHT
+- Time: `11:01:43`
+
+TRUMP HAS ASKED JUSTICES TO LET HIM FIRE COOK AMID COURT FIGHT
+
+## 34. RUSSELL 2000 INDEX HITS FRESH INTRADAY RECORD HIGH
+- Time: `10:36:07`
+
+RUSSELL 2000 INDEX HITS FRESH INTRADAY RECORD HIGH
+
+## 35. AT OPEN, DOW UP 0.15%, S&P 500 UP 0.32%, NASDAQ UP 0.37%
+- Time: `10:30:48`
+
+AT OPEN, DOW UP 0.15%, S&P 500 UP 0.32%, NASDAQ UP 0.37%
+
+## 36. OpenAI Strikes Luxshare Deal, Eyes 2026–27 Launch While Considering Products Such as Glasses and a Voice Recorder
+- Time: `10:16:09`
+
+OpenAI has struck an agreement with Luxshare, an iPhone assembler, to produce a future device, according to The Information, which also reported that OpenAI approached Goertek for components and has been in talks with suppliers about developing a smart speaker. The company is targeting a first release in late 2026 or early 2027 and is considering products such as glasses, a voice recorder, and a pin. The Information added that OpenAI has been recruiting Apple hardware talent and securing manufacturing partners.
+
+## 37. OPENAI MULLS MAKING GLASSES
+- Time: `10:11:00`
+
+OPENAI MULLS MAKING GLASSES. VOICE RECORDER, PIN: THE INFORMATION
+
+## 38. OPENAI IS TARGETING LATE 2026 OR EARLY 2027 FOR ITS FIRST DEVICES- THE INFORMATION
+- Time: `10:10:47`
+
+OPENAI IS TARGETING LATE 2026 OR EARLY 2027 FOR ITS FIRST DEVICES- THE INFORMATION
+
+## 39. OPENAI HAS STRUCK AN AGREEMENT WITH LUXSHARE, AN IPHONE ASSEMBLER, TO PRODUCE A FUTURE OPENAI DEVICE - THE INFORMATION
+- Time: `10:08:48`
+
+OPENAI HAS STRUCK AN AGREEMENT WITH LUXSHARE, AN IPHONE ASSEMBLER, TO PRODUCE A FUTURE OPENAI DEVICE - THE INFORMATION
+
+## 40. MKTNews Morning Bid - US
+- Time: `10:05:44`
+
+- Stock futures were little changed Friday following a winning session that sent indexes to new records as the Federal Reserve’s decision to cut interest rates set in investors’ minds.
+- Bridgewater founder Ray Dalio said Friday that gold and non-fiat currencies will become stronger stores of value as major currencies face devaluation risks amid mounting debt pressures globally.
+- Trump administration is considering a plan to propel the construction of factories and other infrastructure in the U.S. with money from a $550 billion investment fund established as part of trade negotiations with Japan
+- Gold futures rose 0.3% on Friday, putting the metal on pace to eke out a 0.1% advance for the week.
+- U.S. President Donald Trump and Chinese President Xi Jinping have held a phone call, Xinhua News Agency reported on Friday.
+
+## 41. CA
+- Time: `09:30:00`
+
+Retail Sales (MoM) (Jul) Actual -0.8% Forecast -0.8% Previous 1.6% NEGLIGIBLE
+
+## 42. GOOGLE READIES EU OFFER AFTER €3 BILLION FINE, SKIPS FULL SPLIT
+- Time: `09:18:35`
+
+GOOGLE READIES EU OFFER AFTER €3 BILLION FINE, SKIPS FULL SPLIT
+
+## 43. CHINA PROBES CHENGDU KUAIGOU TECH OVER E-COMMERCE LAW VIOLATION
+- Time: `09:07:37`
+
+CHINA PROBES CHENGDU KUAIGOU TECH OVER E-COMMERCE LAW VIOLATION
+
+## 44. CHINA'S XI, TRUMP HOLD CALL - CHINESE STATE MEDIA
+- Time: `09:04:15`
+
+CHINA'S XI, TRUMP HOLD CALL - CHINESE STATE MEDIA
+
+## 45. China’s Next Financial Briefing—What Will Markets Do?
+- Time: `08:46:20`
+
+China's PBOC, NFRA, CSRC, and SAFE will hold a press conference on September 22 at 3 PM
+
+## 46. FDI INTO CHINA IN JAN-AUG -12.7 % Y/Y IN YUAN TERMS: COMMERCE MINISTRY
+- Time: `08:28:58`
+
+FDI INTO CHINA IN JAN-AUG -12.7 % Y/Y IN YUAN TERMS: COMMERCE MINISTRY
+
+## 47. CHINA VOWS TO BOOST CONSUMPTION IN AUTOMOTIVE AFTERMARKET
+- Time: `08:25:23`
+
+CHINA VOWS TO BOOST CONSUMPTION IN AUTOMOTIVE AFTERMARKET
+
+## 48. Chinese Premier Li Qiang Holds State Council Meeting
+- Time: `08:17:18`
+
+- Discussed revisions to the Banking Supervision and Management Law
+- In principle passed draft amendment of Banking Supervision Law – State Media
+- Studied using Chinese standards in government purchases – State Radio
+- All business entities should be treated equally to ensure fair competition
+
+## 49. KASHKARI: CAN ALWAYS CUT RATES MORE QUICKLY IF LABOR MARKET WEAKENS MORE THAN EXPECTED
+- Time: `08:01:11`
+
+KASHKARI: CAN ALWAYS CUT RATES MORE QUICKLY IF LABOR MARKET WEAKENS MORE THAN EXPECTED
+
+## 50. CHINA CABINET MEETING: TO CRACK DOWN ILLEGAL FINANCIAL ACTIVITIES
+- Time: `07:40:47`
+
+CHINA CABINET MEETING: TO CRACK DOWN ILLEGAL FINANCIAL ACTIVITIES
+
+## 51. CHINA CABINET MEETING: ALL BUSINESS ENTITIES SHOULD BE TREATED EQUALLY TO ENSURE FAIR COMPETITION
+- Time: `07:39:39`
+
+CHINA CABINET MEETING: ALL BUSINESS ENTITIES SHOULD BE TREATED EQUALLY TO ENSURE FAIR COMPETITION
+
+## 52. CHINA CABINET MEETING: IN PRINCIPLES PASSED DRAFT AMENDMENT OF BANKING SUPERVISION LAW - STATE MEDIA
+- Time: `07:39:20`
+
+CHINA CABINET MEETING: IN PRINCIPLES PASSED DRAFT AMENDMENT OF BANKING SUPERVISION LAW - STATE MEDIA
+
+## 53. CHINA CABINET MEETING: DISCUSSED REVISIONS TO THE BANKING SUPERVISION AND MANAGEMENT LAW
+- Time: `07:38:57`
+
+CHINA CABINET MEETING: DISCUSSED REVISIONS TO THE BANKING SUPERVISION AND MANAGEMENT LAW
+
+## 54. CHINESE PREMIER LI QIANG HOLDS STATE COUNCIL MEETING: RADIO
+- Time: `07:37:48`
+
+CHINESE PREMIER LI QIANG HOLDS STATE COUNCIL MEETING: RADIO
+
+## 55. 🚨PBOC, NFRA, CSRC, SAFE Chiefs Set for High-Profile Press Conference
+- Time: `06:59:30`
+
+The State Council Information Office will hold a themed press conference on “High-Quality Completion of the 14th Five-Year Plan” on Monday, September 22, 2025, at 3 PM.
+Governor of the People’s Bank of China Pan Gongsheng, Director of the National Financial Regulatory Administration Li Yunze, Chairman of the China Securities Regulatory Commission Wu Qing, and Vice Governor of the PBOC and Director of the State Administration of Foreign Exchange Zhu Hexin will present the financial sector’s achievements during the 14th Five-Year Plan period and answer questions from the press.
+
+## 56. CHINA’S CENTRAL BANK, FINANCIAL REGULATORS, CSRC, AND STATE ADMINISTRATION OF FOREIGN EXCHANGE WILL HOLD A PRESS CONFERE
+- Time: `06:48:12`
+
+CHINA’S CENTRAL BANK, FINANCIAL REGULATORS, CSRC, AND STATE ADMINISTRATION OF FOREIGN EXCHANGE WILL HOLD A PRESS CONFERENCE ON SEPTEMBER 22 AT 3 PM
+
+## 57. CHINA CENTRAL BANK GOVERNOR, FINANCE AND SECURITIES REGULATORS TO HOLD JOINT PRESSER ON MONDAY - NOTICE
+- Time: `06:45:12`
+
+CHINA CENTRAL BANK GOVERNOR, FINANCE AND SECURITIES REGULATORS TO HOLD JOINT PRESSER ON MONDAY - NOTICE
+
+## 58. CITI EXPECTS THE GOLD BULL MARKET TO CONTINUE NEAR-TERM AND UPGRADE ITS 0-3M POINT PRICE TARGET TO $3,800/OZ (UP FROM $3
+- Time: `06:26:30`
+
+CITI EXPECTS THE GOLD BULL MARKET TO CONTINUE NEAR-TERM AND UPGRADE ITS 0-3M POINT PRICE TARGET TO $3,800/OZ (UP FROM $3,600/OZ)
+
+## 59. China Association of Automobile Manufacturers Launches Anti-Discrimination Survey in the Auto Industry
+- Time: `06:19:24`
+
+The China Association of Automobile Manufacturers announced that on September 13, 2025, the Ministry of Commerce launched an anti-discrimination investigation into U.S. measures targeting China's semiconductor sector. To assess the impact on the automotive industry's use of semiconductors, the association has initiated its own anti-discrimination survey within the sector.
+
+## 60. CHINA ASSOCIATION OF AUTOMOBILE MANUFACTURERS LAUNCHES ANTI-DISCRIMINATION SURVEY IN THE AUTO INDUSTRY
+- Time: `06:18:15`
+
+CHINA ASSOCIATION OF AUTOMOBILE MANUFACTURERS LAUNCHES ANTI-DISCRIMINATION SURVEY IN THE AUTO INDUSTRY
+
+## 61. PBOC SHIFTS 14-DAY REVERSE REPOS TO FIXED AMOUNTS WITH RATE BIDDING; TIMING AND SCALE WILL FOLLOW LIQUIDITY NEEDS
+- Time: `06:06:40`
+
+PBOC SHIFTS 14-DAY REVERSE REPOS TO FIXED AMOUNTS WITH RATE BIDDING; TIMING AND SCALE WILL FOLLOW LIQUIDITY NEEDS

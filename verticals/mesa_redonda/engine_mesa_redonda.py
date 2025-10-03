@@ -35,6 +35,25 @@ from quantex.core.report_builder import retrieve_relevant_knowledge
 from quantex.core.ai_services import ai_services
 from quantex.core.agent_tools import get_expert_opinion
 from quantex.core.handler_registry import register_handler
+import logging, os
+
+# --- Logger persistente para diagnóstico de load_data ---
+try:
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    LOGS_DIR = os.path.join(PROJECT_ROOT, 'logs')
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    _ld_logger = logging.getLogger('quantex.load_data')
+    if not _ld_logger.handlers:
+        _ld_logger.setLevel(logging.INFO)
+        _fh = logging.FileHandler(os.path.join(LOGS_DIR, 'load_data.log'), encoding='utf-8')
+        _fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+        # También enviar a consola para ver en terminal
+        _sh = logging.StreamHandler(sys.stdout)
+        _sh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+        _ld_logger.addHandler(_fh)
+        _ld_logger.addHandler(_sh)
+except Exception:
+    _ld_logger = logging.getLogger('quantex.load_data')
 from quantex.core import agent_tools
 from quantex.core.data_fetcher import get_data_series
 
@@ -756,22 +775,27 @@ def load_data(parameters: dict) -> dict:
     la cosecha de informes de especialistas, y lo guarda como "materia prima".
     """
     print("✅ [Mesa Redonda] Iniciando flujo 'load_data' (Refactorizado)...")
+    _ld_logger.info("INICIO load_data parameters=%s", str(parameters))
     try:
         report_keyword = parameters.get("report_keyword")
         if not report_keyword:
             raise ValueError("El 'report_keyword' es requerido.")
 
         report_def = db.get_report_definition_by_topic(report_keyword)
+        _ld_logger.info("Definición cargada para topic=%s", report_keyword)
         if not report_def:
             raise Exception(f"No se encontró definición para '{report_keyword}'.")
 
         # PASO 1: PREPARAR EVIDENCIA CUANTITATIVA
         print("  -> PASO 1/3: Preparando evidencia cuantitativa (mercado, gráficos)...")
         dossier, workspace = _prepare_evidence_dossier(report_def)
+        _ld_logger.info("PASO 1/3 completado: evidence preparada (series=%s)", 
+                        ",".join([k for k in workspace.keys() if k.startswith('data_')]))
 
         # PASO 2: ENRIQUECER CON CONTEXTO CUALITATIVO CURADO
         print("  -> PASO 2/3: Cosechando inteligencia cualitativa del Grafo...")
         curated_context = _run_dossier_curator(report_keyword, report_def)
+        _ld_logger.info("PASO 2/3 completado: contexto cualitativo curado=%s", bool(curated_context))
         if curated_context:
             dossier.qualitative_context = curated_context
 
@@ -786,6 +810,7 @@ def load_data(parameters: dict) -> dict:
 
                 print(f"    -> Procesando requisito: '{specialist_keyword}'...")
                 latest_specialist_report = db.get_latest_report(specialist_keyword)
+                _ld_logger.info("PASO 3/3 requisito=%s encontrado=%s", specialist_keyword, bool(latest_specialist_report))
                 
                 if latest_specialist_report and latest_specialist_report.get('content_dossier'):
                     full_content_dossier = latest_specialist_report['content_dossier']
@@ -811,11 +836,13 @@ def load_data(parameters: dict) -> dict:
                     print(f"      -> 🟡 Advertencia: No se encontró un informe final para '{specialist_keyword}'.")
         else:
             print("    -> No se requieren informes de especialistas para este tópico.")
+            _ld_logger.info("No hay required_reports para topic=%s", report_keyword)
 
 
         # PASO 4/4: BUSCAR Y FILTRAR LA MEMORIA DEL ORÁCULO
         print("  -> PASO 4/4: Buscando la visión experta anterior...")
         expert_vision_completa = db.get_expert_context(report_keyword)
+        _ld_logger.info("Memoria del oráculo presente=%s", bool(expert_vision_completa))
         
         if expert_vision_completa:
             # Filtramos para quedarnos solo con las claves que necesita la IA
@@ -833,7 +860,9 @@ def load_data(parameters: dict) -> dict:
             topic=report_keyword,
             evidence=dossier.to_dict()
         )
+        _ld_logger.info("Dossier de materia prima guardado para topic=%s", report_keyword)
 
+        _ld_logger.info("FIN OK load_data topic=%s", report_keyword)
         return jsonify({
             "response_blocks": [
                 {"type": "text", "content": f"✅ Dossier de materia prima para '{report_keyword}' creado y guardado exitosamente.", "display_target": "chat"}
@@ -842,6 +871,7 @@ def load_data(parameters: dict) -> dict:
 
     except Exception as e:
         traceback.print_exc()
+        _ld_logger.info("EXCEPCIÓN load_data: %s", str(e))
         return jsonify({"response_blocks": [{"type": "text", "content": f"Error en el flujo de carga de datos: {e}"}]})
 
 

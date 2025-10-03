@@ -45,6 +45,8 @@ MANIFEST
 .env.staging
 credentials.json
 google_credentials.json
+gmail_credentials.json
+gmail_token.json
 service-account.json
 *.pem
 *.key
@@ -59,6 +61,12 @@ logs/
 *.temp
 .DS_Store
 Thumbs.db
+
+# Scripts de prueba obsoletos con arquitectura agentic
+test_*.py
+debug_*.py
+check_*.py
+explore_*.py
 
 # Archivos de base de datos
 *.db
@@ -104,11 +112,11 @@ data/processed/
 *.h5
 *.hdf5
 
-# Archivos de reportes generados
+# Archivos de reportes generados (temporales)
 reports/
 output/
-exports/
-*.pdf
+exports/mktnews_202509*.md
+exports/mktnews_latest.md
 *.html
 
 # Archivos de Pinecone
@@ -121,7 +129,7 @@ downloads/
 playwright-report/
 test-results/
 
-# Archivos de Node.js (si hay frontend)
+# Archivos de Node.js (para MCP servers)
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -149,3 +157,7 @@ chrome_profile/
 **/chrome_profile/
 *.pma
 *.journal
+
+# Tokens y credenciales específicas (ya incluidos arriba pero redundancia)
+base/scripts/gmail_token.json
+base/scripts/gmail_credentials.json

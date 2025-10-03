@@ -1,5 +1,5 @@
 # --- 1. Importaciones de Librerías y Configuración de Rutas ---
-import json, os, sys, traceback, locale, uuid, re, datetime
+import json, os, sys, traceback, locale, uuid, re, datetime, logging
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request, render_template_string
 from flask_cors import CORS
@@ -187,6 +187,55 @@ def create_app():
     app = Flask(__name__, template_folder='templates', static_folder='static')
     CORS(app)
     load_dotenv(os.path.join(PROJECT_ROOT, '.env'))
+
+    # --- LOG A ARCHIVO Y CONSOLA PARA REQUESTS (DIAGNÓSTICO) ---
+    try:
+        logs_dir = os.path.join(PROJECT_ROOT, 'logs')
+        os.makedirs(logs_dir, exist_ok=True)
+        request_logger = logging.getLogger('quantex.requests')
+        if not request_logger.handlers:
+            request_logger.setLevel(logging.INFO)
+            fh = logging.FileHandler(os.path.join(logs_dir, 'server_requests.log'), encoding='utf-8')
+            fmt = logging.Formatter('%(asctime)s - %(message)s')
+            fh.setFormatter(fmt)
+            # También enviar a consola para ver en terminal
+            sh = logging.StreamHandler(sys.stdout)
+            sh.setFormatter(fmt)
+            request_logger.addHandler(fh)
+            request_logger.addHandler(sh)
+    except Exception:
+        request_logger = logging.getLogger('quantex.requests')
+
+    # --- ESPÍAS GLOBALES DE REQUESTS ---
+    @app.before_request
+    def _spy_before_request():
+        try:
+            msg = f"BEFORE {request.method} {request.path}"
+            print(f"[SENTINEL] {msg}")
+            request_logger.info(msg)
+        except Exception:
+            pass
+
+    @app.after_request
+    def _spy_after_request(response):
+        try:
+            msg = f"AFTER {request.method} {request.path} -> {response.status_code}"
+            print(f"[SENTINEL] {msg}")
+            request_logger.info(msg)
+        except Exception:
+            pass
+        return response
+
+    @app.errorhandler(404)
+    def _spy_404(e):
+        print(f"[SENTINEL] 404 for {request.method} {request.path}")
+        return jsonify({"error": "Not Found", "path": request.path}), 404
+
+    @app.route('/health')
+    def _health():
+        print("[SENTINEL] /health ping")
+        request_logger.info("/health ping")
+        return jsonify({"ok": True})
 
     print("🚀 QUANTEX: Iniciando y configurando sistema...")
 
@@ -602,7 +651,14 @@ def create_app():
     @register_handler("load_data")
     def _handle_load_data(parameters: dict, **kwargs) -> dict:
         """Delega la carga de datos a la vertical de Mesa Redonda."""
-        return mesa_redonda.load_data(parameters=parameters)
+        try:
+            print("[SENTINEL] -> _handle_load_data: entrada", parameters)
+            result = mesa_redonda.load_data(parameters=parameters)
+            print("[SENTINEL] <- _handle_load_data: retorno OK")
+            return result
+        except Exception as e:
+            print(f"[SENTINEL] !! _handle_load_data: excepción: {e}")
+            raise
 
     @register_handler("send_report")
     def _handle_send_report(parameters, **kwargs):
@@ -878,6 +934,11 @@ def create_app():
         request_data = request.get_json()
 
         try:
+            print("[SENTINEL] /chat: request recibida")
+            try:
+                print("[SENTINEL] /chat payload:", request_data)
+            except Exception:
+                pass
             user_message = request_data.get("message", "")
             state = request_data.get("state", {})
             
@@ -888,18 +949,20 @@ def create_app():
             
             conversation_history = db.get_conversation_history(state['session_id'], limit=3)
             dynamic_catalog = build_tool_catalog()
-            
             strategy_plan = run_strategy_planner(user_message, state, dynamic_catalog, conversation_history)
             flow_type = strategy_plan.get("flow_type", "out_of_domain_response").lower()
+            print(f"[SENTINEL] /chat: flow_type resuelto -> {flow_type}")
             handler_function = HANDLER_REGISTRY.get(flow_type)
 
             if handler_function:
+                print(f"[SENTINEL] /chat: llamando handler {handler_function.__name__}")
                 response = handler_function(
                     parameters=strategy_plan.get("parameters", {}), 
                     state=state, 
                     user_message=user_message,
                     conversation_history=conversation_history
                 )
+                print("[SENTINEL] /chat: handler retornó respuesta")
             else:
                 handler_name_for_error = FLOW_REGISTRY.get(flow_type, {}).get("handler_name", "desconocido")
                 error_message = f"-> ❌ ERROR ARQUITECTÓNICO: No se encontró la función '{handler_name_for_error}' registrada para el flujo '{flow_type}'."

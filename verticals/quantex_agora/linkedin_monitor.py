@@ -22,13 +22,22 @@ load_dotenv(os.path.join(PROJECT_ROOT, '.env'))
 from verticals.quantex_agora.phantom_base_manager import PhantomBaseManager
 from verticals.quantex_agora import airtable_manager
 
-# Configurar logging
+# Configurar salida estándar a UTF-8 en Windows para evitar UnicodeEncodeError
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
+# Configurar logging (UTF-8 en archivo y consola)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('linkedin_monitor.log'),
-        logging.StreamHandler()
+        logging.FileHandler('linkedin_monitor.log', encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger(__name__)

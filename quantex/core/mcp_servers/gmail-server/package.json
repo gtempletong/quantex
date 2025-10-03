@@ -1,0 +1,23 @@
+{
+  "name": "quantex-gmail-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for Quantex Gmail integration - Based on existing Python scripts",
+  "main": "gmail-mcp-server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node gmail-mcp-server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "gmail",
+    "quantex",
+    "claude",
+    "cursor"
+  ],
+  "author": "Quantex Team",
+  "license": "MIT"
+}
+
