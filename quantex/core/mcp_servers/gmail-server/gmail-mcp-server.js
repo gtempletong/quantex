@@ -8,7 +8,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 // Configuración de Gmail usando tus credenciales existentes
-const GMAIL_CREDENTIALS_PATH = process.env.GMAIL_CREDENTIALS_PATH || 'C:\\quantex\\google_credentials.json';
+const GMAIL_CREDENTIALS_PATH = process.env.GMAIL_CREDENTIALS_PATH || './google_credentials.json';
 const GMAIL_USER_EMAIL = process.env.GMAIL_USER_EMAIL || 'templetonglen@gmail.com';
 
 class QuantexGmailServer {
