@@ -1,0 +1,123 @@
+{
+  "tools": [
+    {
+      "name": "supabase.query_table",
+      "description": "Herramienta genérica para hacer queries a cualquier tabla especificando columnas y filtros específicos.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "table_name": { "type": "string", "description": "Nombre de la tabla (ej: 'personas', 'empresas')" },
+          "columns": { "type": "string", "description": "Columnas a seleccionar separadas por comas (ej: 'nombre, email' o '*')", "default": "*" },
+          "filters": { 
+            "type": "object", 
+            "description": "Filtros a aplicar como diccionario (ej: {'email_sent': false, 'tipo_empresa': 'grande'})" 
+          },
+          "limit": { "type": "integer", "description": "Límite de resultados", "default": 10 },
+          "order_by": { "type": "string", "description": "Columna para ordenar (ej: 'nombre_contacto')" },
+          "ascending": { "type": "boolean", "description": "Orden ascendente (true) o descendente (false)", "default": true }
+        },
+        "required": ["table_name"]
+      },
+      "output_example": {
+        "ok": true,
+        "data": [
+          {
+            "id": 1,
+            "nombre_contacto": "Juan Pérez",
+            "email_contacto": "juan@empresa.com",
+            "email_sent": false
+          }
+        ],
+        "count": 1,
+        "table": "personas"
+      }
+    },
+    {
+      "name": "supabase.find_person",
+      "description": "Busca personas por nombre, email, RUT o lista todas las personas sin emails enviados.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "search_term": { "type": "string", "description": "Término de búsqueda (nombre, email o RUT). Dejar vacío para búsqueda general." },
+          "search_type": { "type": "string", "enum": ["name", "email", "rut", "general"], "description": "Tipo de búsqueda: 'general' para listar todas las personas sin emails" },
+          "only_unsent": { "type": "boolean", "description": "Solo retornar personas que no han recibido emails", "default": false },
+          "limit": { "type": "integer", "description": "Límite de resultados (default: 10)", "default": 10 }
+        },
+        "required": ["search_type"]
+      },
+      "output_example": { 
+        "ok": true, 
+        "found": true,
+        "person": {
+          "id": 123,
+          "nombre_contacto": "Juan Pérez",
+          "email_contacto": "juan@empresa.com",
+          "rut_contacto": "12345678-9",
+          "email_sent": false,
+          "email_sent_at": null,
+          "empresa": {
+            "razon_social": "Empresa ABC",
+            "rut_empresa": "98765432-1",
+            "email_empresa": "contacto@empresa.com"
+          }
+        }
+      },
+      "output_example_general": {
+        "ok": true,
+        "found": true,
+        "persons": [
+          {
+            "id": 123,
+            "nombre_contacto": "Juan Pérez",
+            "email_contacto": "juan@empresa.com",
+            "email_sent": false
+          }
+        ],
+        "count": 1
+      }
+    },
+    {
+      "name": "llm.compose_email",
+      "description": "Redacta un email profesional usando LLM basado en contexto y destinatario.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "recipient_name": { "type": "string", "description": "Nombre del destinatario" },
+          "recipient_company": { "type": "string", "description": "Empresa del destinatario" },
+          "email_purpose": { "type": "string", "description": "Propósito del email (ej: follow-up, meeting request, etc.)" },
+          "context": { "type": "string", "description": "Contexto adicional para el email" },
+          "tone": { "type": "string", "enum": ["formal", "professional", "friendly"], "description": "Tono del email" }
+        },
+        "required": ["recipient_name", "email_purpose"]
+      },
+      "output_example": { "ok": true, "subject": "Meeting Request", "html_content": "<p>Dear John...</p>" }
+    },
+          {
+            "name": "llm.compose_email_template",
+            "description": "Redacta un email usando la plantilla de presentación predefinida.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "recipient_name": { "type": "string", "description": "Nombre del destinatario" },
+                "recipient_company": { "type": "string", "description": "Empresa del destinatario" }
+              },
+              "required": ["recipient_name"]
+            },
+            "output_example": { "ok": true, "subject": "Presentación de Servicios", "html_content": "<p>Estimado/a Juan...</p>" }
+          },
+          {
+            "name": "brevo.send_email",
+            "description": "Envía un email usando el SDK oficial de Brevo.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "to": { "type": "array", "items": { "type": "string" } },
+                "subject": { "type": "string" },
+                "html_body": { "type": "string" }
+              },
+              "required": ["to", "subject", "html_body"]
+            },
+            "output_example": { "ok": true, "message_id": "brevo-12345" }
+          }
+  ]
+}
