@@ -1,0 +1,36 @@
+<!-- Header reutilizable para informes con logo de Gavin Templeton -->
+<div class="report-header">
+    <div class="logo-container">
+        <svg width="200" height="60" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+            <!-- Top line (más gruesa) -->
+            <line x1="50" y1="35" x2="350" y2="35" stroke="#C0C0C0" stroke-width="2"/>
+            
+            <!-- Bottom line (más delgada) -->
+            <line x1="50" y1="85" x2="350" y2="85" stroke="#C0C0C0" stroke-width="1"/>
+            
+            <!-- Main text (mejor centrado) -->
+            <text x="200" y="60" 
+                  font-family="Georgia, serif" 
+                  font-size="22" 
+                  font-weight="normal"
+                  fill="#C0C0C0" 
+                  text-anchor="middle" 
+                  dominant-baseline="middle"
+                  letter-spacing="3px">
+                GAVIN TEMPLETON
+            </text>
+        </svg>
+    </div>
+    
+    <div class="report-info">
+        <h1 class="report-title">{{ titulo_informe | default('Informe Quantex') }}</h1>
+        <p class="report-date">{{ fecha_informe | default('Fecha no disponible') }}</p>
+    </div>
+    
+    <div class="report-meta">
+        {% if artifact_id %}
+        <p class="report-id">ID: {{ artifact_id[:8] }}</p>
+        {% endif %}
+    </div>
+</div>
+

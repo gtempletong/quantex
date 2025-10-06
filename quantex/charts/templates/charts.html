@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Quantex Charts</title>
+    
+    <!-- TradingView Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <!-- Estilos -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📊 Quantex Charts</h1>
+            <p>Visualización de datos financieros con TradingView</p>
+        </header>
+
+        <!-- Controles -->
+        <div class="controls">
+            <div class="control-group">
+                <label for="ticker-select">Serie:</label>
+                <select id="ticker-select">
+                    <option value="">Seleccionar serie...</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="days-select">Días:</label>
+                <select id="days-select">
+                    <option value="30">30 días</option>
+                    <option value="90">90 días</option>
+                    <option value="365" selected>1 año</option>
+                    <option value="730">2 años</option>
+                    <option value="3650">10 años</option>
+                </select>
+            </div>
+            
+            <button id="load-btn" class="btn btn-primary">Cargar</button>
+            <button id="clear-btn" class="btn btn-secondary">Limpiar</button>
+        </div>
+
+        <!-- Overlays y normalización -->
+        <div class="controls">
+            <div class="control-group">
+                <label for="overlay-select">Superponer series (Ctrl/Cmd para múltiples):</label>
+                <select id="overlay-select" multiple size="6" style="min-width: 260px;"></select>
+            </div>
+            <div class="control-group">
+                <label>Normalización:</label>
+                <div>
+                    <label><input type="radio" name="norm-mode" value="none" checked> Ninguna</label>
+                    <label style="margin-left:12px;"><input type="radio" name="norm-mode" value="base100"> Base 100</label>
+                    <label style="margin-left:12px;"><input type="radio" name="norm-mode" value="pct"> % Cambio</label>
+                </div>
+            </div>
+            <div class="control-group">
+                <button id="overlay-btn" class="btn btn-primary">Cargar Overlays</button>
+            </div>
+        </div>
+
+        <!-- Gráfico -->
+        <div class="chart-container">
+            <div id="chart"></div>
+        </div>
+
+        <!-- Información -->
+        <div class="info-panel">
+            <div class="info-item">
+                <span class="label">Serie actual:</span>
+                <span id="current-series">Ninguna</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Puntos de datos:</span>
+                <span id="data-points">0</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Última actualización:</span>
+                <span id="last-update">-</span>
+            </div>
+        </div>
+
+        <!-- Log de errores -->
+        <div id="error-log" class="error-log" style="display: none;">
+            <h3>❌ Errores:</h3>
+            <div id="error-content"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/charts_final.js') }}"></script>
+</body>
+</html>

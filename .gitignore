@@ -117,7 +117,18 @@ reports/
 output/
 exports/mktnews_202509*.md
 exports/mktnews_latest.md
-*.html
+# Ignorar reportes HTML específicos, pero permitir templates
+*_report.html
+*_premium_report*.html
+*_consolidated*.html
+*_technical_committee*.html
+*_fair_value*.html
+*_template_*.html
+*_linkedin_post*.html
+*_commodities.html
+*_divisas.html
+reporte_*.html
+auditoria_de_datos.html
 
 # Archivos de Pinecone
 pinecone_index/

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Quantex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='report_style.css') }}">
+</head>
+<body>
+    <div id="app-container">
+        <div id="chat-container" class="panel">
+            <h2>Chat Quantex</h2>
+            <div style="text-align: right; margin-bottom: 10px;">
+                <a href="/graph-explorer" style="color: #007acc; text-decoration: none; font-size: 14px;">
+                    🧠 Explorar Grafo de Conocimiento →
+                </a>
+            </div>
+            <div id="chat-window"></div>
+            <form id="chat-form">
+                <select id="action-menu">
+                    <option value="">Selecciona una acción...</option>
+                    <optgroup label="Generar Informes (Borrador)">
+                        <option value="genera el pre informe del cobre">Pre-Informe Cobre</option>
+                        <option value="generar pre informe para clp">Pre-Informe CLP</option>
+                    </optgroup>
+                    <optgroup label="Análisis Técnico">
+                        <option value="trigger_technical_analysis">Analizar Acción Individual...</option>
+                    </optgroup>
+                    <optgroup label="Publicación y Envío">
+                        <option value="publica el informe final del cobre">Publicar Informe Final (Cobre)</option>
+                        <option value="publica el informe final del peso chileno">Publicar Informe Final (CLP)</option>
+                    </optgroup>
+                    <optgroup label="Gestión de Datos">
+                        <option value="carga los datos del cobre">Cargar Datos del Cobre</option>
+                        <option value="cargar datos para clp">Cargar Datos del CLP</option>
+                    <optgroup label="Análisis Estratégico">
+                        <option value="iniciar sesion de alineamiento para el clp">Alinear Tesis (CLP)</option>
+                        <option value="iniciar sesion de alineamiento para el cobre">Alinear Tesis (Cobre)</option>
+                    </optgroup>
+                </select>
+                <input type="text" id="chat-input" placeholder="O escribe tu pregunta..." autocomplete="off">
+                <button type="submit">Enviar</button>
+            </form>
+        </div>
+        <div id="panel-container" class="panel">
+            <h2>Visualización</h2>
+            <div id="panel-content">
+                <p style="color: #666; text-align: center; margin-top: 20px;">Aquí se mostrarán los datos detallados.</p>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const chatWindow = document.getElementById('chat-window');
+    const panelContent = document.getElementById('panel-content');
+    const submitButton = chatForm.querySelector('button');
+    const actionMenu = document.getElementById('action-menu');
+    
+    // Esta variable guardará el estado de la sesión entre peticiones.
+    let sessionState = {};
+
+    actionMenu.addEventListener('change', (e) => {
+        const selectedAction = e.target.value;
+        if (selectedAction === 'trigger_technical_analysis') {
+            const ticker = window.prompt("Por favor, ingresa el ticker a analizar (ej: SQM-B.SN):");
+            if (ticker && ticker.trim() !== '') {
+                const command = `analiza en lote ${ticker.trim()}`;
+                handleUserRequest(command);
+            }
+        } else if (selectedAction) {
+            handleUserRequest(selectedAction);
+        }
+        e.target.value = ""; 
+    });
+
+    chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const userMessage = chatInput.value.trim();
+        if (userMessage) {
+            handleUserRequest(userMessage);
+        }
+    });
+
+    async function handleUserRequest(message) {
+        addMessageToChat(message, 'user-message');
+        chatInput.value = '';
+        submitButton.disabled = true;
+        actionMenu.disabled = true;
+
+        try {
+            const requestBody = { message: message, state: sessionState };
+            console.log("🕵️ ESPÍA (Frontend): Enviando el siguiente estado al backend:", sessionState);
+            
+            const response = await fetch('http://127.0.0.1:5001/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+            
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || `Error del servidor: ${response.statusText}`);
+            }
+
+        // --- INICIO DE LA CORRECCIÓN CLAVE ---
+        // Reemplazamos completamente nuestra memoria local con la versión actualizada
+        // que nos envía el servidor. Esto asegura la sincronización de TODAS las claves.
+        if (data.state) {
+            sessionState = data.state;
+            console.log("🕵️ ESPÍA (Frontend): Estado de la sesión sincronizado con el backend:", sessionState);
+        }
+        // --- FIN DE LA CORRECCIÓN CLAVE ---
+        
+        // --- INICIO DE LA SEGUNDA CORRECCIÓN (artifact_id) ---
+        // Adicionalmente, si la respuesta directa contiene un artifact_id,
+        // lo guardamos en nuestro estado de sesión.
+        if (data.artifact_id) {
+            sessionState.artifact_id = data.artifact_id;
+            console.log("🕵️ ESPÍA (Frontend): ID de artefacto recibido y guardado:", sessionState.artifact_id);
+        }
+        // --- FIN DE LA SEGUNDA CORRECCIÓN ---
+
+            if (data.response_blocks && data.response_blocks.length > 0) {
+                let chatContent = '';
+                let accumulatedPanelHtml = '';
+                let consolidatedPanelHtml = '';
+
+                // Heurística: si el backend informa total_tickers o una lista de tickers, hay consolidado
+                const hasConsolidatedSignal = (typeof data.total_tickers === 'number' && data.total_tickers > 0)
+                    || (Array.isArray(data.tickers) && data.tickers.length > 0);
+
+                data.response_blocks.forEach(block => {
+                    if (block.display_target === 'chat') {
+                        chatContent += block.content + '\n';
+                    } else if (block.display_target === 'panel' && block.type === 'html') {
+                        if (hasConsolidatedSignal) {
+                            // Si hay señal de consolidado, priorizamos el primer HTML para el panel como consolidado
+                            if (!consolidatedPanelHtml) {
+                                consolidatedPanelHtml = block.content;
+                            }
+                        } else {
+                            // Comportamiento anterior: acumular posibles paneles (normalmente 1)
+                            accumulatedPanelHtml += block.content;
+                        }
+                    }
+                });
+
+                if (chatContent) {
+                    addMessageToChat(chatContent.trim(), 'quantex-message');
+                }
+                // Mostrar solo el consolidado cuando esté disponible; si no, mostrar lo acumulado
+                if (consolidatedPanelHtml) {
+                    panelContent.innerHTML = consolidatedPanelHtml;
+                } else if (accumulatedPanelHtml) {
+                    panelContent.innerHTML = accumulatedPanelHtml;
+                }
+            }
+
+        } catch (err) {
+            addMessageToChat(`Error en el flujo: ${err.message}`, 'quantex-message');
+        } finally {
+            submitButton.disabled = false;
+            actionMenu.disabled = false;
+            chatInput.focus();
+        }
+    }
+
+    function addMessageToChat(text, className) {
+        const div = document.createElement('div');
+        div.classList.add('message', className);
+        div.innerHTML = text.replace(/\n/g, '<br>');
+        chatWindow.appendChild(div);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    function renderToPanel(block) {
+        panelContent.innerHTML = block.content;
+    }
+</script>
+</body>
+</html>

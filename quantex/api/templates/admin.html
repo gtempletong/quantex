@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Quantex</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 2em; background-color: #f4f6f8; color: #333; }
+        .container { max-width: 1200px; margin: auto; }
+        h1, h2 { color: #1a202c; text-align: center; }
+        h1 { margin-bottom: 1em; }
+        h2 { margin-top: 0; color: #2d3748; text-align: left; font-size: 1.2em;}
+        .report-card { background-color: #fff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 2em; padding: 1.5em; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .card-header { border-bottom: 2px solid #cbd5e0; padding-bottom: 0.5em; margin-bottom: 1em; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+        td { padding: 0.8em; border-bottom: 1px solid #edf2f7; vertical-align: top; font-size: 14px; }
+        td:first-child { font-weight: bold; color: #4a5568; width: 20%; font-family: 'Courier New', Courier, monospace; }
+        pre { background-color: #edf2f7; padding: 10px; border-radius: 4px; white-space: pre-wrap; word-break: break-all; margin: 0; font-size: 13px; font-family: 'Courier New', Courier, monospace; }
+        .status-active { color: #2f855a; font-weight: bold; }
+        .status-inactive { color: #c53030; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Panel de Administración de Quantex</h1>
+
+        {% if reports %}
+            {% for report in reports %}
+                <div class="report-card">
+                    <div class="card-header">
+                        <h2>{{ report.display_title | default('Informe Sin Título') }}</h2>
+                    </div>
+                    <table>
+                        {% for key, value in report.items() %}
+                        <tr>
+                            <td>{{ key }}</td>
+                            <td>
+                                {% if key == 'is_active' %}
+                                    <span class="{{ 'status-active' if value else 'status-inactive' }}">
+                                        {{ value }}
+                                    </span>
+                                {% elif value is mapping or (value is iterable and value is not string and value is not none) %}
+                                    <pre><code>{{ value | tojson(indent=2) }}</code></pre>
+                                {% else %}
+                                    {{ value | default('No definido') }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="report-card">
+                <h2>No se encontraron definiciones de informes.</h2>
+                <p>No se pudo cargar ninguna definición desde la base de datos. Verifica la conexión y que la tabla 'report_definitions' no esté vacía.</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
