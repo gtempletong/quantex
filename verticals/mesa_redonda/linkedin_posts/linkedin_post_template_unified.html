@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{TITULO_INFORME}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #121212;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #E0E0E0;
+        }
+        
+        .post-container {
+            background-color: #1E1E1E;
+            width: 1400px;
+            height: 788px;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            border: 1px solid #333333;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background-color: #1E1E1E;
+            color: #FFFFFF;
+            padding: 20px 40px 10px 40px;
+            border-bottom: 1px solid #333333;
+        }
+        .header-row { display: grid; grid-template-columns: 320px 1fr 320px; align-items: center; }
+        .logo-block { width: 320px; }
+        
+        .title {
+            font-size: 34px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #FFFFFF;
+        }
+        
+        .date {
+            color: #AAAAAA;
+            font-size: 18px;
+        }
+        
+        .post-content {
+            padding: 16px 32px 20px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            flex: 1;
+        }
+        
+        .hook-section {
+            background-color: #007BFF;
+            border-radius: 8px;
+            padding: 12px 16px;
+            text-align: center;
+        }
+        
+        .hook-title {
+            color: #FFFFFF;
+            font-size: 22px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        
+        .hook-subtitle {
+            color: #FFFFFF;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        .sentiment-indicator {
+            margin: 0;
+            padding: 10px 12px;
+            background-color: #2A2A2A;
+            border-radius: 8px;
+        }
+        
+        .sentiment-label {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFFFFF;
+            margin-bottom: 10px;
+        }
+        
+        .sentiment-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .sentiment-percentage {
+            color: #2ecc71;
+            font-weight: bold;
+            font-size: 16px;
+            min-width: 56px;
+        }
+        
+        .sentiment-percentage.bearish {
+            color: #e74c3c;
+            text-align: right;
+        }
+        
+        .sentiment-bar {
+            flex: 1;
+            height: 20px;
+            background-color: #e74c3c;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .sentiment-fill {
+            height: 100%;
+            width: {{BULLISH_PCT}}%;
+            background-color: #2ecc71;
+            border-radius: 8px 0 0 8px;
+        }
+        
+        .content-row {
+            display: flex;
+            gap: 32px;
+            flex: 1;
+            min-height: 0;
+        }
+        .col-left { flex: 3; display: flex; flex-direction: column; gap: 16px; }
+        .col-right { flex: 2; display: flex; flex-direction: column; gap: 16px; }
+        .key-insights { margin: 0; }
+        
+        .section-title {
+            color: #FFFFFF;
+            font-size: 20px;
+            font-weight: bold;
+            border-bottom: 2px solid #007BFF;
+            padding-bottom: 6px;
+            margin-bottom: 12px;
+        }
+        
+        .factors-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0;
+        }
+        
+        .factors-list li {
+            background-color: #2A2A2A;
+            margin: 6px 0;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: #E0E0E0;
+            line-height: 1.3;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 56px;
+        }
+        
+        .driver-concept {
+            width: 260px;
+            min-width: 260px;
+            max-width: 260px;
+            font-weight: bold;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        
+        .driver-separator {
+            margin-right: 10px;
+            color: #AAAAAA;
+        }
+        
+        .driver-comment {
+            flex: 1;
+        }
+        
+        /* Colores dinámicos basados en sentiment */
+        .factors-list li.bearish {
+            border-left: 3px solid #e74c3c;
+        }
+        
+        .factors-list li.bearish::before {
+            content: '▼';
+            color: #e74c3c;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+        
+        .factors-list li.bullish {
+            border-left: 3px solid #2ecc71;
+        }
+        
+        .factors-list li.bullish::before {
+            content: '▲';
+            color: #2ecc71;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+        
+        .factors-list li.neutral {
+            border-left: 3px solid #f39c12;
+        }
+        
+        .factors-list li.neutral::before {
+            content: '■';
+            color: #f39c12;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+        
+        .contact-section {
+            background-color: #2A2A2A;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333333;
+            text-align: center;
+        }
+        
+        .contact-section h2 {
+            color: #FFFFFF;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #007BFF;
+            padding-bottom: 8px;
+            display: inline-block;
+        }
+        
+        .disclaimer {
+            background-color: #2D3748;
+            border-left: 4px solid #FFA500;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .disclaimer h4 {
+            color: #FFA500;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .disclaimer p {
+            color: #E0E0E0;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 10px 16px;
+            color: #AAAAAA;
+            font-size: 12px;
+            border-top: 1px solid #333333;
+            background-color: #1A1A1A;
+        }
+        
+        @media (max-width: 768px) {
+            .post-container {
+                margin: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="post-container">
+        <div class="header">
+            <div class="header-row">
+                <!-- Logo a la izquierda -->
+                <div class="logo-block">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0; border-collapse:collapse;">
+                        <tr>
+                            <td align="left" style="border-top:2px solid #C0C0C0; border-bottom:1px solid #C0C0C0; padding:10px 0 8px 0;">
+                                <span style="font-family:Georgia, serif; font-size:20px; letter-spacing:3px; color:#C0C0C0; display:inline-block; white-space:nowrap;">GAVIN TEMPLETON</span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <!-- Título centrado -->
+                <div style="text-align:center;">
+                    <div class="title">{{TITULO_INFORME}}</div>
+                </div>
+                <!-- Placeholder para balancear el grid -->
+                <div></div>
+            </div>
+            <div class="date" style="text-align:center;">{{FECHA_INFORME}}</div>
+        </div>
+        
+        <div class="post-content">
+            <div class="hook-section">
+                <div class="hook-title">{{VEREDICTO_TITULO}}</div>
+                <div class="hook-subtitle">{{SENTENCIA_CLAVE}}</div>
+            </div>
+            
+            <div class="sentiment-indicator">
+                <div class="sentiment-label">{{SENTIMENT_LABEL}}</div>
+                <div class="sentiment-bar-container">
+                    <div class="sentiment-percentage">{{BULLISH_PCT}}%</div>
+                    <div class="sentiment-bar">
+                        <div class="sentiment-fill"></div>
+                    </div>
+                    <div class="sentiment-percentage bearish">{{BEARISH_PCT}}%</div>
+                </div>
+            </div>
+            <div class="content-row">
+                <div class="col-left">
+                    <div class="key-insights">
+                        <h2 class="section-title">Drivers Clave</h2>
+                        <ul class="factors-list">
+                            {{DRIVERS_HTML}}
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-right">
+                    <div class="contact-section">
+                        <h2 class="section-title">¿Quieres saber más?</h2>
+                        <p style="color: #E0E0E0; line-height: 1.6; margin: 12px 0; text-align: center; font-size: 18px;">
+                            Suscríbete gratis a mis reportes diarios
+                        </p>
+                        <p style="color: #007BFF; text-align: center; font-size: 16px; margin: 10px 0; font-weight: bold;">
+                            <a href="https://www.gavintempleton.net/" target="_blank" style="color: #007BFF; text-decoration: none;">www.gavintempleton.net</a>
+                        </p>
+                        <p style="color: #AAAAAA; text-align: center; font-size: 14px; margin-top: 12px;">
+                            Contacto: gavintempleton@gavintempleton.net
+                        </p>
+                    </div>
+                    <div class="disclaimer" style="margin-top: 16px;">
+                        <h4>⚠️ Disclaimer</h4>
+                        <p>Este análisis es informativo y no constituye asesoramiento de inversión. Los mercados financieros son volátiles. Consulte con un asesor financiero calificado antes de tomar decisiones.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Informe generado por Quantex</p>
+        </div>
+    </div>
+</body>
+</html>

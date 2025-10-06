@@ -1,0 +1,9 @@
+# Comité Técnico del CLP - Configuración específica
+# Refactorizado desde template base el 2025-09-25
+
+extends: "templates/comite_tecnico_base.yaml"
+variables:
+  ticker: "comite_tecnico_clp"
+  title_suffix: "del CLP"
+  tickers: ["USDCLP.FOREX"]
+  chart_days: 500

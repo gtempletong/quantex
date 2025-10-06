@@ -1,0 +1,10 @@
+# Comité Técnico del Cobre - Configuración específica
+# Refactorizado desde template base el 2025-09-25
+
+extends: "templates/comite_tecnico_base.yaml"
+variables:
+  ticker: "comite_tecnico_cobre"
+  title_suffix: "del Cobre"
+  tickers: ["HG=F"]
+  chart_days: 252
+  main_ticker_symbol: "HG"

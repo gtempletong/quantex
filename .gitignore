@@ -1,10 +1,41 @@
-# Entornos Virtuales
-/venv/
-/env/
-/.venv/
-/.env/
+# =============================================================================
+# QUANTEX - .GITIGNORE
+# =============================================================================
+# Solo ignorar archivos que realmente no deben estar en el repositorio
+# =============================================================================
 
-# Archivos de caché de Python
+# =============================================================================
+# ARCHIVOS SENSIBLES - NUNCA SUBIR
+# =============================================================================
+# Variables de entorno y credenciales
+.env
+*.env
+.env.local
+.env.production
+.env.staging
+
+# Credenciales de Google y APIs
+google_credentials.json
+gmail_credentials.json
+gmail_token.json
+service-account.json
+base/scripts/gmail_credentials.json
+base/scripts/gmail_token.json
+
+# Certificados y claves
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# =============================================================================
+# ENTORNOS VIRTUALES Y DEPENDENCIAS
+# =============================================================================
+# Python
+venv/
+env/
+.venv/
 __pycache__/
 *.pyc
 *.pyo
@@ -30,145 +61,105 @@ wheels/
 *.egg
 MANIFEST
 
-# Archivos de configuración de IDEs
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =============================================================================
+# ARCHIVOS TEMPORALES Y LOGS
+# =============================================================================
+# Logs del sistema
+*.log
+logs/
+gavin_connections_monitor.log
+linkedin_monitor.log
+phantom_base_manager.log
+
+# Archivos temporales
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# =============================================================================
+# CHROME Y NAVEGADOR
+# =============================================================================
+# Perfiles de Chrome (muy pesados)
+chrome_profile/
+*/chrome_profile/
+**/chrome_profile/
+mkt_news_scrapper/chrome_profile/
+
+# Archivos de navegador
+*.pma
+*.journal
+
+# =============================================================================
+# ARCHIVOS DE SISTEMA
+# =============================================================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+
+# =============================================================================
+# IDEs Y EDITORES
+# =============================================================================
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# Archivos sensibles (¡nunca subas tus secretos!)
-*.env
-.env
-.env.local
-.env.production
-.env.staging
-credentials.json
-google_credentials.json
-gmail_credentials.json
-gmail_token.json
-service-account.json
-*.pem
-*.key
-*.crt
-*.p12
-*.pfx
+# =============================================================================
+# REPORTES GENERADOS AUTOMÁTICAMENTE
+# =============================================================================
+# Solo reportes específicos generados por el sistema
+*_report.html
+*_premium_report*.html
+*_consolidated*.html
+*_technical_committee*.html
+*_fair_value*.html
+*_linkedin_post_*.html
+reporte_*.html
+auditoria_de_datos.html
+final_premium_report_visual.html
+reporte_fair_value_clp.html
 
-# Logs y archivos temporales
-*.log
-logs/
-*.tmp
-*.temp
-.DS_Store
-Thumbs.db
+# Reportes de LinkedIn posts generados
+verticals/mesa_redonda/linkedin_posts/outputs/
 
-# Scripts de prueba obsoletos con arquitectura agentic
-test_*.py
-debug_*.py
-check_*.py
-explore_*.py
-
-# Archivos de base de datos
-*.db
-*.sqlite
-*.sqlite3
-
-# Archivos de configuración específicos de Quantex
-config/secrets/
-config/credentials/
-*.config.local
-*.settings.local
-
-# Archivos de backup
-*.bak
-*.backup
-*_backup/
-backup/
-
-# Archivos de cache específicos
-.cache/
+# =============================================================================
+# CACHÉ Y ARCHIVOS DE DESARROLLO
+# =============================================================================
+# Python
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
 .nox/
 
-# Archivos de Jupyter
+# Jupyter
 .ipynb_checkpoints/
-*.ipynb
 
-# Archivos de modelos de ML (pueden ser grandes)
-models/
-*.model
-*.pkl
-*.joblib
+# =============================================================================
+# ARCHIVOS ESPECÍFICOS QUE NO NECESITAS
+# =============================================================================
+# Archivos de configuración local
+*.config.local
+*.settings.local
 
-# Archivos de datos grandes
-data/raw/
-data/processed/
-*.csv
-*.xlsx
-*.parquet
-*.h5
-*.hdf5
-
-# Archivos de reportes generados (temporales)
-reports/
-output/
-exports/mktnews_202509*.md
-exports/mktnews_latest.md
-# Ignorar reportes HTML específicos, pero permitir templates
-*_report.html
-*_premium_report*.html
-*_consolidated*.html
-*_technical_committee*.html
-*_fair_value*.html
-*_template_*.html
-*_linkedin_post*.html
-*_commodities.html
-*_divisas.html
-reporte_*.html
-auditoria_de_datos.html
-
-# Archivos de Pinecone
-pinecone_index/
-*.pinecone
-
-# Archivos de Selenium/Playwright
-screenshots/
-downloads/
-playwright-report/
-test-results/
-
-# Archivos de Node.js (para MCP servers)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Archivos de Docker
-.dockerignore
-Dockerfile
-docker-compose.yml
-docker-compose.override.yml
-
-# Archivos de sistema
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Chrome profiles y datos de navegador
-chrome_profile/
-*/chrome_profile/
-*profile*/
-**/chrome_profile/
-*.pma
-*.journal
-
-# Tokens y credenciales específicas (ya incluidos arriba pero redundancia)
-base/scripts/gmail_token.json
-base/scripts/gmail_credentials.json
+# Archivos de backup específicos
+*_backup/
+backup/

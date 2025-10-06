@@ -1,0 +1,233 @@
+# Informe Diario del Peso Chileno - Definición YAML
+# Migrado desde Supabase el 2025-09-25
+
+report_keyword: "clp"
+display_title: "Informe Diario del Peso Chileno"
+template_file: "verticals/mesa_redonda/template_divisas.html"
+is_active: true
+
+# Series de datos de mercado
+market_data_series:
+  - name: "USDCLP.FOREX"
+  - name: "DXY.INDX"
+  - name: "lme"
+  - name: "B.U2.EUR.4F.G_N_A.SV_C_YM.SR_2Y"
+  - name: "US2Y.GBOND"
+  - name: "bcch_expectativas_tpm_prox_reunion"
+  - name: "bcch_expectativas_tpm_subsiguiente_reunion"
+  - name: "chile_tpm"
+  - name: "us_tpm"
+
+# Requisitos de datos y configuración
+data_requirements:
+  bloques_de_analisis:
+    - nombre_bloque: "analisis_de_precio_commodity"
+      series_a_aplicar:
+        - "USDCLP.FOREX"
+        - "DXY.INDX"
+
+# Reportes requeridos (dependencias)
+required_reports:
+  - report_keyword: "comite_tecnico_clp"
+    context_key: "analisis_tecnico"
+    summary_mapping:
+      resumen_cio: "resumen_cio"
+      ticker: "ticker"
+  
+  - report_keyword: "fair_value_clp"
+    context_key: "analisis_fair_value"
+    summary_mapping:
+      fair_value_analysis: "ai_content.contenido_del_informe"
+  
+  - report_keyword: "cobre"
+    context_key: "analisis_cobre"
+    summary_mapping:
+      expert_context_output: "ai_content.final_output.expert_context_output"
+      resumen_gerencial: "ai_content.final_output.borrador_sintetizado.resumen_gerencial"
+      sentimiento_mercado: "ai_content.final_output.borrador_sintetizado.sentimiento_mercado"
+      veredicto_tactico: "ai_content.final_output.borrador_sintetizado.veredicto_tactico"
+
+# Pipeline de procesamiento
+processing_pipeline:
+  - tool_name: "extract_report_summary"
+    parameters:
+      output_key: "cobre_strategic_summary"
+      source_report_key: "analisis_cobre"
+  
+  - tool_name: "calculate_rate_differential"
+    parameters:
+      output_key: "data_rate_differential"
+      us_rate_data_key: "data_US2Y.GBOND"
+      eu_rate_data_key: "data_B.U2.EUR.4F.G_N_A.SV_C_YM.SR_2Y"
+  
+  - tool_name: "add_technical_indicators"
+    parameters:
+      output_key: "data_DXY.INDX_with_indicators"
+      source_key: "data_DXY.INDX"
+
+# Pipeline de síntesis
+synthesis_pipeline:
+  - agent_name: "Oraculo_Estratega_CLP"
+    prompt_file: "verticals/mesa_redonda/prompt_oraculo_clp.md"
+    output_key: "borrador_sintetizado"
+    task_complexity: "complex"
+
+# Pipeline de visualización
+visualization_pipeline:
+  - tool_name: "generate_chart"
+    parameters:
+      chart_type: "candlestick"
+      figsize: [12, 6]
+      html_title: "1. Evolución del Peso Chileno (USD/CLP)"
+      moving_averages: [20, 50]
+      source_series_key: "data_USDCLP.FOREX"
+  
+  - tool_name: "generate_chart"
+    parameters:
+      axes:
+        - name: "DXY Index"
+          series:
+            - data_key: "data_DXY.INDX_with_indicators"
+              column_name: "close"
+              display_name: "DXY"
+            - data_key: "data_DXY.INDX_with_indicators"
+              column_name: "SMA_20"
+              display_name: "SMA 20"
+            - data_key: "data_DXY.INDX_with_indicators"
+              column_name: "SMA_50"
+              display_name: "SMA 50"
+      chart_period_days: 180
+      chart_type: "custom_line_chart"
+      figsize: [12, 6]
+      html_title: "2. Evolución del Dólar Index (DXY)"
+  
+  - tool_name: "generate_chart"
+    parameters:
+      axes:
+        - name: "DXY Index (eje izq.)"
+          series:
+            - data_key: "data_DXY.INDX"
+              column_name: "close"
+              display_name: "DXY"
+        - name: "Diferencial de Tasa % (eje der.)"
+          series:
+            - data_key: "data_rate_differential"
+              column_name: "value"
+              display_name: "Diferencial"
+      chart_period_days: 366
+      chart_type: "custom_line_chart"
+      figsize: [12, 6]
+      html_title: "3. DXY vs Diferencial de Tasas"
+
+# Esquema de salida
+output_schema:
+  type: "object"
+  required: ["borrador_sintetizado"]
+  properties:
+    borrador_sintetizado:
+      type: "object"
+      required:
+        - "veredicto_tactico"
+        - "sentimiento_mercado"
+        - "resumen_gerencial"
+        - "recomendaciones_cobertura"
+        - "perspectivas_drivers"
+        - "analisis_tactico_corto_plazo"
+        - "aprendizajes_clave"
+      properties:
+        veredicto_tactico:
+          type: "object"
+          required: ["titulo", "sentencia_clave"]
+          properties:
+            titulo:
+              type: "string"
+            sentencia_clave:
+              type: "string"
+        
+        sentimiento_mercado:
+          type: "object"
+          required: ["porcentaje_alcista", "etiqueta"]
+          properties:
+            porcentaje_alcista:
+              type: "string"
+            etiqueta:
+              type: "string"
+        
+        resumen_gerencial:
+          type: "array"
+          items:
+            type: "string"
+        
+        recomendaciones_cobertura:
+          type: "object"
+          required: ["importadores", "exportadores"]
+          properties:
+            importadores:
+              type: "object"
+              required: ["accion", "justificacion"]
+              properties:
+                accion:
+                  type: "string"
+                justificacion:
+                  type: "string"
+            exportadores:
+              type: "object"
+              required: ["accion", "justificacion"]
+              properties:
+                accion:
+                  type: "string"
+                justificacion:
+                  type: "string"
+        
+        perspectivas_drivers:
+          type: "object"
+          required: ["analisis_cobre", "analisis_dxy", "analisis_tasas"]
+          properties:
+            analisis_cobre:
+              type: "string"
+            analisis_dxy:
+              type: "string"
+            analisis_tasas:
+              type: "string"
+        
+        analisis_tactico_corto_plazo:
+          type: "object"
+          required: ["comentario_tecnico"]
+          properties:
+            comentario_tecnico:
+              type: "string"
+        
+        aprendizajes_clave:
+          type: "array"
+          items:
+            type: "string"
+
+# Fuentes tácticas
+fuentes_tacticas:
+  - source: "FXStreet"
+    topic: "Forex"
+    days_ago: 2
+  - source: "Autonomous_Researcher"
+    topic: "CLP"
+    days_ago: 2
+  - source: "Autonomous_Researcher"
+    topic: "DXY"
+    days_ago: 2
+  - source: "Autonomous_Researcher"
+    topic: "Política Monetaria Fed"
+    days_ago: 1
+    processing_type: "raw"
+  - source: "Autonomous_Researcher"
+    topic: "Política Monetaria BCCh"
+    days_ago: 1
+    processing_type: "raw"
+  - source: "Autonomous_Researcher"
+    topic: "Economia Chilena"
+    days_ago: 2
+  - source: "Autonomous_Researcher"
+    topic: "Economia Norteamericana"
+    days_ago: 2
+
+# Campos opcionales
+drivers_map: []
+

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ titulo_informe }}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #121212; font-family: Roboto, sans-serif; color: #E0E0E0;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #121212;">
+        <tr>
+            <td align="center">
+                <table width="600" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 20px auto; background-color: #1E1E1E; border-radius: 8px;">
+                    
+                    <!-- Header con logo de Gavin Templeton -->
+                    <tr>
+                        <td align="center" style="padding: 20px 20px 10px 20px;">
+                            <!-- Logo universal compatible con Outlook (bordes del mismo ancho que el nombre) -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0; border-collapse:collapse;">
+                                <tr>
+                                    <td align="center">
+                                        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto; border-collapse:collapse;">
+                                            <tr>
+                                                <td align="center" style="border-top:2px solid #C0C0C0; border-bottom:1px solid #C0C0C0; padding:10px 0 8px 0;">
+                                                    <span style="font-family:Georgia, serif; font-size:22px; letter-spacing:3px; color:#C0C0C0; display:inline-block; white-space:nowrap;">GAVIN TEMPLETON</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <h1 style="color: #FFFFFF; margin: 10px 0 5px 0; font-size: 24px;">{{ titulo_informe }}</h1>
+                            <p style="color: #AAAAAA; margin: 0; font-size: 14px;">{{ fecha_informe }}</p>
+                        </td>
+                    </tr>
+                    
+                    {% if reporte.veredicto_tactico %}
+                    <tr>
+                        <td style="padding: 0 20px;">
+                            <table width="100%" border="0" cellpadding="0" cellspacing="0" style="border-radius: 8px; background-color: #007BFF;">
+                                <tr>
+                                    <td align="center" style="padding: 15px;">
+                                        <h2 style="color: #FFFFFF; margin: 0; font-size: 18px; text-transform: uppercase;">{{ reporte.veredicto_tactico.titulo }}</h2>
+                                        <p style="color: #FFFFFF; margin: 5px 0 0 0;">{{ reporte.veredicto_tactico.sentencia_clave }}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% if reporte.sentimiento_mercado %}
+                    <tr>
+                        <td style="padding: 15px 20px;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr><td colspan="3" align="center" style="padding-bottom: 5px; font-size: 13px; font-weight: bold; color: #FFFFFF;">{{ reporte.sentimiento_mercado.etiqueta }}</td></tr>
+                                <tr>
+                                    <td width="50" align="left" style="font-size: 12px; vertical-align: middle;"><span style="color: #2ecc71; font-weight: bold;">{{ reporte.sentimiento_mercado.porcentaje_alcista }}%</span></td>
+                                    <td width="100%" style="vertical-align: middle;">
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="height: 16px; background-color: #e74c3c; border-radius: 8px;">
+                                            <tr>
+                                                <td width="{{ reporte.sentimiento_mercado.porcentaje_alcista }}%" style="background-color: #2ecc71; border-radius: 8px 0 0 8px;"></td>
+                                                <td width="{{ 100 - reporte.sentimiento_mercado.porcentaje_alcista }}%"></td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    <td width="50" align="right" style="font-size: 12px; vertical-align: middle;"><span style="color: #e74c3c; font-weight: bold;">{{ 100 - reporte.sentimiento_mercado.porcentaje_alcista }}%</span></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    {% if reporte.resumen_gerencial %}
+                    <tr>
+                        <td style="padding: 0 20px 20px 20px;">
+                            <h2 style="color: #FFFFFF; border-bottom: 2px solid #007BFF; padding-bottom: 5px; margin-top: 10px;">Resumen Gerencial</h2>
+                            <ul style="color: #E0E0E0; line-height: 1.6; padding-left: 20px; margin-top: 10px;">
+                                {% for punto in reporte.resumen_gerencial %}<li style="margin-bottom: 10px;">{{ punto }}</li>{% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% if visualizations %}
+                    <tr>
+                        <td style="padding: 0 20px 20px 20px;">
+                            <h2 style="color: #FFFFFF; border-bottom: 2px solid #007BFF; padding-bottom: 5px; margin-top: 10px;">Análisis de Datos y Gráficos</h2>
+                            {% for viz in visualizations %}
+                                {% if viz.type == 'table' %}
+                                    {{ viz.html | safe }}
+                                {% else %}
+                                    <h3 style="color: #FFFFFF; margin-top: 15px; margin-bottom: 10px;">{{ viz.title }}</h3>
+                                    {{ viz.html | safe }}
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    {% if reporte.perspectivas_y_pronosticos %}
+                    <tr>
+                        <td style="padding: 0 20px 20px 20px;">
+                            <h2 style="color: #FFFFFF; border-bottom: 2px solid #007BFF; padding-bottom: 5px; margin-top: 10px;">Perspectivas y Pronósticos</h2>
+                            <p style="color: #E0E0E0; line-height: 1.6;"><strong>Corto Plazo:</strong> {{ reporte.perspectivas_y_pronosticos.corto_plazo }}</p>
+                            <p style="color: #E0E0E0; line-height: 1.6;"><strong>Mediano Plazo:</strong> {{ reporte.perspectivas_y_pronosticos.medio_plazo }}</p>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    {% if reporte.analisis_detallado %}
+                    <tr>
+                        <td style="padding: 0 20px 20px 20px;">
+                            <h2 style="color: #FFFFFF; border-bottom: 2px solid #007BFF; padding-bottom: 5px; margin-top: 10px;">Análisis Detallado</h2>
+                            <p style="color: #E0E0E0; line-height: 1.6;"><strong>Análisis de Precios:</strong> {{ reporte.analisis_detallado.analisis_de_precios }}</p>
+                            <p style="color: #E0E0E0; line-height: 1.6;"><strong>Análisis de Inventarios:</strong> {{ reporte.analisis_detallado.analisis_de_inventarios }}</p>
+                            <p style="color: #E0E0E0; line-height: 1.6;"><strong>Contexto Cualitativo:</strong> {{ reporte.analisis_detallado.contexto_cualitativo }}</p>
+                            <p style="color: #E0E0E0; line-height: 1.6;"><strong>Contexto Macro:</strong> {{ reporte.analisis_detallado.contexto_macro }}</p>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    {% if reporte.perspectivas_y_pronosticos and reporte.perspectivas_y_pronosticos.factores_vigilar %}
+                    <tr>
+                        <td style="padding: 0 20px 20px 20px;">
+                            <h2 style="color: #FFFFFF; border-bottom: 2px solid #007BFF; padding-bottom: 5px; margin-top: 10px;">Factores a Vigilar</h2>
+                            <ul style="color: #E0E0E0; line-height: 1.6; padding-left: 20px; margin-top: 10px;">
+                                {% for factor in reporte.perspectivas_y_pronosticos.factores_vigilar %}<li style="margin-bottom: 10px;">{{ factor }}</li>{% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    {% if reporte.analisis_tecnico %}
+                    <tr>
+                        <td style="padding: 0 20px 20px 20px;">
+                            <h2 style="color: #FFFFFF; border-bottom: 2px solid #007BFF; padding-bottom: 5px; margin-top: 10px;">Análisis Técnico</h2>
+                            <p style="color: #E0E0E0; line-height: 1.6;"><strong>Niveles Clave:</strong> {{ reporte.analisis_tecnico.niveles_clave }}</p>
+                            <p style="color: #E0E0E0; line-height: 1.6;"><strong>Momentum:</strong> {{ reporte.analisis_tecnico.momentum }}</p>
+                            <p style="color: #E0E0E0; line-height: 1.6;"><strong>Patrones:</strong> {{ reporte.analisis_tecnico.patrones }}</p>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    
+                    <!-- Disclaimer -->
+                    <tr>
+                        <td style="padding: 0 20px 20px 20px;">
+                            <div style="background-color: #2D3748; border-left: 4px solid #FFA500; padding: 15px; border-radius: 4px; margin-top: 20px;">
+                                <h3 style="color: #FFA500; margin: 0 0 10px 0; font-size: 14px;">DISCLAIMER</h3>
+                                <p style="color: #E0E0E0; font-size: 12px; line-height: 1.4; margin: 0;">
+                                    Este informe es de carácter educativo e informativo. No constituye asesoría financiera, 
+                                    recomendación de inversión o sugerencia de trading. Los mercados son volátiles y 
+                                    este análisis puede cambiar. Consulte con su asesor financiero antes de tomar 
+                                    cualquier decisión de inversión o cobertura.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td align="center" style="padding: 20px; border-top: 1px solid #333333;">
+                            <p style="color: #AAAAAA; font-size: 12px; margin: 0;">Este es un informe generado por Quantex.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

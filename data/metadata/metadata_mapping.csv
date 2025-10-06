@@ -1,0 +1,32 @@
+sheet_header,series_name,description,unit,category,source
+COMEX,comex,Precio del Cobre de Alto Grado en el COMEX,USD/lb,precio,COMEX
+LME,lme,Precio del Cobre a 3 meses en el London Metal Exchange,USD/tonne,precio,LME
+SHFE,shfe,Precio del Cobre en el Shanghai Futures Exchange,CNY/tonne,precio,SHFE
+Inventarios LME,inventarios_lme,Stock de Cobre en las bodegas certificadas de LME,tonnes,inventario,LME
+Inventarios COMEX,inventarios_comex,Stock de Cobre en las bodegas certificadas de COMEX,tonnes,inventario,COMEX
+Inventarios SHFE,inventarios_shfe,Stock de Cobre en las bodegas certificadas de Shanghai,tonnes,inventario,COMEX
+Inventarios Totales,inventarios_totales,Suma de inventarios en bodegas LME COMEX y SHFE,tonnes,inventario,LME COMEX SHFE 
+DXY,dxy,Índice del Dólar Estadounidense (ICE),puntos,moneda,ICE
+CLP,clp,Tipo de Cambio Dólar Americano a Peso Chileno,CLP,moneda,Mercado
+CNY,cny,Tipo de Cambio Dólar Americano a Yuan Chino,CNY,moneda,Mercado
+Chile TPM,chile_tpm,Tasa de politica monetaria BC de Chile,Tasa,renta fija,Mercado
+US TPM,us_tpm,Tasa de politica monetaria FED,Tasa,renta fija,Mercado
+Chile Country Risk 5Y,chile_country_risk_5y,Riesgo Pais de Chile,Tasa,riesgo pais,Mercado
+Chile Country Risk 10Y,chile_country_risk_10y,Riesgo Pais de Chile,Tasa,riesgo pais,Mercado
+IPSA,ipsa,Índice principal de la Bolsa de Santiago,puntos,equity,Bolsa de Santiago
+IPSASD,ipsasd,Índice principal de la Bolsa de Santiago sin dividendos,puntos,equity,Bolsa de Santiago
+IPSA PE Ratio,ipsa_pe_ratio,Ratio P/U,ratio,equity,Bolsa de Santiago
+MSCI EEM Index,msci_eem_index,Índice Mercados Emergentes MSCI,puntos,equity,MSCI
+MSCI EEM Index Best PE Ratio,msci_eem_index_best_pe_ratio,Ratio P/U,ratio,equity,MSCI
+MSCI EEM Index  PE Ratio,msci_eem_index__pe_ratio,Ratio P/U,ratio,equity,MSCI
+US 2 Year Treasury,us_2_year_treasury,bono del tesoro norteamericano duracion 2 años,tasa,renta fija,Mercado
+US 5 Year Treasury,us_5_year_treasury,bono del tesoro norteamericano duracion 5 años,tasa,renta fija,Mercado
+US 10 Year Treasury,us_10_year_treasury,bono del tesoro norteamericano duracion 10 años,tasa,renta fija,Mercado
+US 20 Year Treasury,us_20_year_treasury,bono del tesoro norteamericano duracion 20 años,tasa,renta fija,Mercado
+US 30 Year Treasury,us_30_year_treasury,bono del tesoro norteamericano duracion 30 años,tasa,renta fija,Mercado
+EUR 2 Year Treasury,eur_2_year_treasury,bono del tesoro europa duracion 2 años,tasa,renta fija,Mercado
+EUR 5 Year Treasury,eur_5_year_treasury,bono del tesoro europa duracion 5 años,tasa,renta fija,Mercado
+EUR 10 Year Treasury,eur_10_year_treasury,bono del tesoro europa duracion 10 años,tasa,renta fija,Mercado
+EUR 20 Year Treasury,eur_20_year_treasury,bono del tesoro europa duracion 20 años,tasa,renta fija,Mercado
+EUR 30 Year Treasury,eur_30_year_treasury,bono del tesoro europa duracion 30 años,tasa,renta fija,Mercado
+BTU 2044,btu_2044,bono UF 2044,tasa,renta fija,Mercado

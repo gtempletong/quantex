@@ -1,0 +1,259 @@
+# Informe Diario del Cobre - Definición YAML
+# Migrado desde Supabase el 2025-09-25
+
+report_keyword: "cobre"
+display_title: "Informe Diario del Cobre"
+template_file: "verticals/mesa_redonda/template_commodities.html"
+is_active: true
+
+# Series de datos de mercado
+market_data_series:
+  - name: "HG=F"
+  - name: "lme"
+  - name: "shfe"
+  - name: "inventarios_shfe"
+  - name: "inventarios_comex"
+  - name: "inventarios_lme"
+  - name: "inventarios_totales"
+  - name: "DXY.INDX"
+  - name: "USDCNY.FOREX"
+  - name: "USDCLP.FOREX"
+
+# Requisitos de datos y configuración
+data_requirements:
+  bloques_de_analisis:
+    - nombre_bloque: "analisis_de_precio_commodity"
+      series_a_aplicar:
+        - "HG=F"
+        - "lme"
+        - "shfe"
+    - nombre_bloque: "analisis_de_inventario"
+      series_a_aplicar:
+        - "inventarios_shfe"
+        - "inventarios_comex"
+        - "inventarios_lme"
+        - "inventarios_totales"
+
+# Reportes requeridos (dependencias)
+required_reports:
+  - report_keyword: "comite_tecnico_cobre"
+    context_key: "analisis_tecnico"
+    summary_mapping:
+      confianza_final: "confianza_final"
+      recomendacion_final: "recomendacion_final"
+      resumen_cio: "resumen_cio"
+      ticker: "ticker"
+
+# Pipeline de procesamiento
+processing_pipeline:
+  - tool_name: "apply_unit_conversion"
+    parameters:
+      source_series_keys:
+        - "data_lme"
+        - "data_shfe"
+      conversion_factor: 0.000453592
+  
+  - tool_name: "apply_currency_conversion"
+    parameters:
+      source_series_key: "data_shfe"
+      rate_series_key: "data_USDCNY.FOREX"
+
+# Pipeline de síntesis
+synthesis_pipeline:
+  - agent_name: "Oraculo_Del_Mercado_Cobre"
+    prompt_file: "verticals/mesa_redonda/prompt_oraculo_cobre.md"
+    output_key: "borrador_sintetizado"
+    task_complexity: "complex"
+
+# Pipeline de visualización
+visualization_pipeline:
+  - tool_name: "generate_table"
+    parameters:
+      title: "Análisis de Precios"
+      headers:
+        - "Bolsa"
+        - "Precio Actual"
+        - "Variación Diaria"
+        - "Variación Semanal"
+      rows:
+        - Bolsa: "LME"
+          "Precio Actual": "lme_summary.last_close"
+          "Variación Diaria": "lme_summary.daily_variation_pct"
+          "Variación Semanal": "lme_summary.weekly_variation_pct"
+        - Bolsa: "COMEX (HG=F)"
+          "Precio Actual": "HG=F_summary.last_close"
+          "Variación Diaria": "HG=F_summary.daily_variation_pct"
+          "Variación Semanal": "HG=F_summary.weekly_variation_pct"
+        - Bolsa: "SHFE"
+          "Precio Actual": "shfe_summary.last_close"
+          "Variación Diaria": "shfe_summary.daily_variation_pct"
+          "Variación Semanal": "shfe_summary.weekly_variation_pct"
+  
+  - tool_name: "generate_table"
+    parameters:
+      title: "Análisis de Inventarios"
+      headers:
+        - "Mercado"
+        - "Inventario actual (mt)"
+        - "Variación Semanal (t)"
+        - "Variación Anual (t)"
+      rows:
+        - Mercado: "LME"
+          "Inventario actual (mt)": "inventarios_lme_summary.last_close"
+          "Variación Semanal (t)": "inventarios_lme_summary.weekly_delta_tonnes"
+          "Variación Anual (t)": "inventarios_lme_summary.annual_delta_tonnes"
+        - Mercado: "COMEX"
+          "Inventario actual (mt)": "inventarios_comex_summary.last_close"
+          "Variación Semanal (t)": "inventarios_comex_summary.weekly_delta_tonnes"
+          "Variación Anual (t)": "inventarios_comex_summary.annual_delta_tonnes"
+        - Mercado: "SHFE"
+          "Inventario actual (mt)": "inventarios_shfe_summary.last_close"
+          "Variación Semanal (t)": "inventarios_shfe_summary.weekly_delta_tonnes"
+          "Variación Anual (t)": "inventarios_shfe_summary.annual_delta_tonnes"
+        - Mercado: "Total"
+          "Inventario actual (mt)": "inventarios_totales_summary.last_close"
+          "Variación Semanal (t)": "inventarios_totales_summary.weekly_delta_tonnes"
+          "Variación Anual (t)": "inventarios_totales_summary.annual_delta_tonnes"
+  
+  - tool_name: "generate_chart"
+    parameters:
+      axes:
+        - name: "Precio (USD/lb)"
+          series:
+            - data_key: "data_lme"
+              column_name: "close"
+              display_name: "LME"
+            - data_key: "data_shfe"
+              column_name: "close"
+              display_name: "SHFE"
+            - data_key: "data_HG=F"
+              column_name: "close"
+              display_name: "COMEX (HG=F)"
+      chart_period_days: 180
+      chart_type: "custom_line_chart"
+      html_title: "Evolución Comparativa de Precios del Cobre"
+
+# Esquema de salida
+output_schema:
+  type: "object"
+  required: ["borrador_sintetizado", "expert_context_output"]
+  properties:
+    borrador_sintetizado:
+      type: "object"
+      required:
+        - "veredicto_tactico"
+        - "sentimiento_mercado"
+        - "resumen_gerencial"
+        - "drivers_mercado"
+        - "analisis_detallado"
+        - "analisis_tecnico"
+        - "perspectivas_y_pronosticos"
+        - "aprendizajes_clave"
+      properties:
+        veredicto_tactico:
+          type: "object"
+          required: ["titulo", "sentencia_clave"]
+          properties:
+            titulo:
+              type: "string"
+            sentencia_clave:
+              type: "string"
+        
+        sentimiento_mercado:
+          type: "object"
+          required: ["porcentaje_alcista", "etiqueta"]
+          properties:
+            porcentaje_alcista:
+              type: "number"
+            etiqueta:
+              type: "string"
+        
+        resumen_gerencial:
+          type: "array"
+          items:
+            type: "string"
+        
+        drivers_mercado:
+          type: "object"
+          required: ["corto_plazo", "mediano_plazo"]
+          properties:
+            corto_plazo:
+              type: "array"
+              items:
+                type: "string"
+            mediano_plazo:
+              type: "array"
+              items:
+                type: "string"
+        
+        analisis_detallado:
+          type: "object"
+          required: ["analisis_de_precios", "analisis_de_inventarios", "contexto_cualitativo", "contexto_macro"]
+          properties:
+            analisis_de_precios:
+              type: "string"
+            analisis_de_inventarios:
+              type: "string"
+            contexto_cualitativo:
+              type: "string"
+            contexto_macro:
+              type: "string"
+        
+        analisis_tecnico:
+          type: "object"
+          required: ["niveles_clave", "momentum", "patrones"]
+          properties:
+            niveles_clave:
+              type: "string"
+            momentum:
+              type: "string"
+            patrones:
+              type: "string"
+        
+        perspectivas_y_pronosticos:
+          type: "object"
+          required: ["corto_plazo", "medio_plazo", "factores_vigilar"]
+          properties:
+            corto_plazo:
+              type: "string"
+            medio_plazo:
+              type: "string"
+            factores_vigilar:
+              type: "array"
+              items:
+                type: "string"
+        
+        aprendizajes_clave:
+          type: "array"
+          items:
+            type: "string"
+    
+    expert_context_output:
+      type: "object"
+      required: ["current_view_label", "core_thesis_summary"]
+      properties:
+        current_view_label:
+          type: "string"
+          description: "Etiqueta final: 'Alcista', 'Bajista' o 'Neutral'."
+        core_thesis_summary:
+          type: "string"
+          description: "Resumen de una sola frase de la tesis principal."
+
+# Fuentes tácticas
+fuentes_tacticas:
+  - source: "SMM"
+    topic: "Cobre"
+    days_ago: 2
+  - source: "Autonomous_Researcher"
+    topic: "Economia China"
+    days_ago: 2
+  - source: "Autonomous_Researcher"
+    topic: "Economia Norteamericana"
+    days_ago: 2
+  - source: "Autonomous_Researcher"
+    topic: "DXY"
+    days_ago: 2
+
+# Campos opcionales
+drivers_map: []
+

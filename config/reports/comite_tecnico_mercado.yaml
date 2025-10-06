@@ -1,0 +1,9 @@
+# Comité Técnico Mercado - Configuración específica
+# Refactorizado desde template base el 2025-09-25
+
+extends: "templates/comite_tecnico_base.yaml"
+variables:
+  ticker: "comite_tecnico_mercado"
+  title_suffix: "Mercado"
+  tickers: ["SPIPSA.INDX", "COPEC.SN", "SQM-B.SN", "CHILE.SN", "FALABELLA.SN"]
+  chart_days: 500

@@ -1,0 +1,76 @@
+# Informe de Fair Value para el CLP - Definición YAML
+# Migrado desde Supabase el 2025-09-25
+
+report_keyword: "fair_value_clp"
+display_title: "Informe de Fair Value para el CLP"
+template_file: "verticals/fair_value/template_fair_value.html"
+is_active: true
+
+# Series de datos de mercado
+market_data_series:
+  - name: "lme"
+  - name: "LATAM Currencies"
+  - name: "Benchmark BTP 2 años"
+  - name: "US2Y.GBOND"
+  - name: "USDCLP.FOREX"
+
+# Requisitos de datos y configuración
+data_requirements:
+  target_series: "USDCLP.FOREX"
+  predictor_series:
+    - "lme"
+    - "LATAM Currencies"
+  spread_components:
+    series_1: "Benchmark BTP 2 años"
+    series_2: "US2Y.GBOND"
+
+# Pipeline de procesamiento
+processing_pipeline:
+  - tool_name: "run_clp_fair_value_model"
+    output_key: "fair_value_results"
+    parameters: {}
+
+# Pipeline de síntesis
+synthesis_pipeline:
+  - agent_name: "Especialista_Fair_Value"
+    prompt_file: "verticals/fair_value/prompt_fair_value.txt"
+    inputs: ["fair_value_results"]
+
+# Pipeline de visualización
+visualization_pipeline:
+  - tool_name: "generate_chart"
+    parameters:
+      axes:
+        - name: "Precio CLP"
+          series:
+            - data_key: "fair_value_results.fair_value_model_results"
+              column_name: "Precio de Mercado"
+              display_name: "Precio de Mercado"
+            - style: "dashed"
+              data_key: "fair_value_results.fair_value_model_results"
+              column_name: "fair_value"
+              display_name: "Valor Justo (Modelo)"
+      chart_type: "custom_line_chart"
+      html_title: "1. Valor Justo vs. Precio de Mercado (USD/CLP)"
+      chart_period_days: 1000
+  
+  - tool_name: "generate_chart"
+    parameters:
+      data_key: "fair_value_results.fair_value_contributions_timeseries"
+      chart_type: "contribution_stack_chart"
+      html_title: "2. Contribución de Variables al Modelo"
+
+# Esquema de salida
+output_schema:
+  contenido_del_informe:
+    valor_justo: "string"
+    precio_actual: "string"
+    analisis_texto: "string"
+    brecha_porcentual: "string"
+    diagnostico_modelo: "string"
+
+# Campos opcionales
+required_reports: []
+drivers_map: "[]"
+fuentes_tacticas: null
+
