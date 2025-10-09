@@ -79,65 +79,7 @@ def run_router_agent(user_message: str, state: dict, dynamic_catalog: list, conv
         print("  -> 🛠️ [Router] Comando de herramienta detectado, saltando detección de grafo y noticias")
         # NO retornar aquí, continuar al siguiente nivel para procesar la herramienta específica
 
-    # CAPA 0.55: Detección de "consulta_noticias_recientes" (solo si NO es comando de herramienta)
-    if not is_tool_command:
-        try:
-            news_terms = ["noticia", "noticias", "titular", "headline", "última", "hoy", "hoy día", "reciente"]
-            if any(term in user_lower for term in news_terms):
-                from datetime import datetime, timezone
-                today_iso = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-                print("  -> 📰 [Router] Intención 'consulta_noticias_recientes' detectada")
-                return {
-                    "flow_type": "graph_explorer_query",
-                    "parameters": {
-                        "query": user_message,
-                        "filters": {
-                            "source": "MktNews",
-                            "node_type": "Documento",
-                            "since": today_iso
-                        }
-                    }
-                }
-        except Exception:
-            pass
 
-    # CAPA 0.57: Detección Inteligente de Consultas al Graph Explorer (Sistema Grafo)
-    # Esta capa se ejecuta DESPUÉS de las herramientas para evitar conflictos
-    # SOLO si NO se detectó un comando de herramienta
-    if not is_tool_command:
-        try:
-            grafo_interface = get_grafo_interface()
-            if grafo_interface.detectar_consulta_grafo(user_message):
-                print("  -> 🧠 [Router] Consulta al Graph Explorer detectada por Sistema Grafo")
-                return {
-                    "flow_type": "graph_explorer_query",
-                    "parameters": {
-                        "query": user_message,
-                        "use_grafo_system": True  # Flag para usar el nuevo sistema
-                    }
-                }
-        except Exception as e:
-            print(f"  -> ⚠️ [Router] Error detectando consulta grafo: {e}")
-            # Fallback a detección básica
-            graph_explorer_keywords = [
-                'qué sé sobre', 'qué conozco de', 'qué información tengo',
-                'buscar en mi conocimiento', 'explorar mi conocimiento',
-                'qué documentos tengo', 'qué datos tengo',
-                'cómo se relaciona', 'qué conexiones hay',
-                'grafo de conocimiento', 'mi conocimiento'
-            ]
-            
-            if any(keyword in user_lower for keyword in graph_explorer_keywords):
-                print("  -> 🧠 [Router] Consulta al Graph Explorer detectada por fallback")
-                return {
-                    "flow_type": "graph_explorer_query",
-                    "parameters": {
-                        "query": user_message,
-                        "use_grafo_system": False
-                    }
-                }
-    else:
-        print("  -> 🛠️ [Router] Comando de herramienta detectado, saltando detección de grafo")
 
     # CAPA 0.6: Atajos para reportes técnicos específicos por lenguaje natural
     # - "Comité Técnico Mercado" -> comite_tecnico_mercado

@@ -7,23 +7,15 @@ import os
 import sys
 import base64
 import argparse
-import uuid
-import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from datetime import datetime
 from dotenv import load_dotenv
 
-# Configuración de rutas para Supabase
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-if PROJECT_ROOT not in sys.path:
-    sys.path.append(PROJECT_ROOT)
-
-from quantex.core.database_manager import supabase
+# (Tracking eliminado) Sin dependencia de Supabase para registrar eventos
 
 # Cargar variables de entorno
 load_dotenv()
@@ -74,21 +66,12 @@ class GmailSender:
         print("✅ Autenticado con Gmail API para envío")
         print("✅ Autenticado con Gmail API")
     
-    def create_message(self, to, subject, body, from_email=None, tracking_id=None):
-        """Crear mensaje de email con tracking opcional"""
+    def create_message(self, to, subject, body, from_email=None):
+        """Crear mensaje de email (HTML)."""
         message = MIMEMultipart()
         message['to'] = to
         message['subject'] = subject
         message['from'] = from_email or 'gavintempleton@gavintempleton.net'
-        
-        # Agregar pixel de tracking si se proporciona tracking_id
-        if tracking_id:
-            # URL del servidor de tracking (cambiar por tu dominio en producción)
-            tracking_url = "http://localhost:5000" if os.getenv('TRACKING_SERVER_URL') is None else os.getenv('TRACKING_SERVER_URL')
-            tracking_pixel = f'<img src="{tracking_url}/track/{tracking_id}" width="1" height="1" style="display:none;">'
-            body = body.replace('</body>', f'{tracking_pixel}</body>')
-            if '</body>' not in body:
-                body += tracking_pixel
         
         # Agregar cuerpo del mensaje
         message.attach(MIMEText(body, 'html'))
@@ -97,14 +80,10 @@ class GmailSender:
         raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
         return {'raw': raw_message}
     
-    def send_email(self, to, subject, body, from_email=None, tracking_id=None):
-        """Enviar email con tracking opcional y registro en Supabase"""
+    def send_email(self, to, subject, body, from_email=None):
+        """Enviar email (sin tracking)."""
         try:
-            # Generar tracking_id si no se proporciona
-            if not tracking_id:
-                tracking_id = str(uuid.uuid4())
-            
-            message = self.create_message(to, subject, body, from_email, tracking_id)
+            message = self.create_message(to, subject, body, from_email)
             
             sent_message = self.service.users().messages().send(
                 userId='me',
@@ -112,31 +91,6 @@ class GmailSender:
             ).execute()
             
             print(f"✅ Email enviado a {to} - ID: {sent_message['id']}")
-            print(f"📊 Tracking ID: {tracking_id}")
-            
-            # Registrar envío en Supabase
-            try:
-                tracking_data = {
-                    'email': to,
-                    'interaction_type': 'email_sent',
-                    'tracking_id': tracking_id,
-                    'detail': json.dumps({
-                        'subject': subject,
-                        'message_id': sent_message['id'],
-                        'from_email': from_email or 'gavintempleton@gavintempleton.net',
-                        'timestamp': datetime.now().isoformat(),
-                        'source': 'gmail_api'
-                    })
-                }
-                
-                result = supabase.table('interactions').insert(tracking_data).execute()
-                if result.data:
-                    print(f"📝 Registro en Supabase: {tracking_id}")
-                else:
-                    print(f"⚠️ Error registrando en Supabase para {tracking_id}")
-                    
-            except Exception as e:
-                print(f"⚠️ Error conectando con Supabase: {e}")
             
             return sent_message['id']
             
@@ -176,7 +130,7 @@ def main():
     parser.add_argument('--body', '-b', help='Cuerpo del email (HTML o texto)')
     parser.add_argument('--from', '-f', help='Dirección de email remitente (opcional)')
     parser.add_argument('--test', action='store_true', help='Enviar email de prueba')
-    parser.add_argument('--track', help='ID de tracking para el email (opcional)')
+    # Tracking eliminado
     
     args = parser.parse_args()
     
@@ -212,8 +166,7 @@ def main():
             to=to_email,
             subject=subject,
             body=body,
-            from_email=getattr(args, 'from', None),
-            tracking_id=args.track
+            from_email=getattr(args, 'from', None)
         )
         
         if message_id:

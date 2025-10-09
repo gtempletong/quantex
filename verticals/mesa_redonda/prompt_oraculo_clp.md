@@ -13,7 +13,7 @@
 - **`qualitative_context`**: Un **objeto (`{}`)**.
   - **Descripción:** Contiene dos tipos de inteligencia muy diferentes:
     - **`inteligencia_tactica_Autonomous_Researcher`**: Noticias y eventos de **corto plazo**. Es el "ruido" del mercado. Úsala para entender el sentimiento del día a día, pero trátala con escepticismo.
-    - **`inteligencia_estrategica`**: Principios y aprendizajes de **largo plazo** acumulados de informes anteriores. Son las "reglas del juego". Úsala como un ancla para tu tesis de mediano plazo.
+    - **`inteligencia_estrategica`**: Principios y aprendizajes de **largo plazo** acumulados de informes anteriores. Es la "sabiduría histórica" del sistema.
     - **`briefing_del_estratega`**: Si existe, es un **string (`" "`)**. Contiene un diálogo completo de alineamiento estratégico entre el usuario y el sistema. Este diálogo muestra la evolución del pensamiento estratégico y contiene directrices específicas para este informe. Tiene la máxima prioridad sobre cualquier otra narrativa. **IMPORTANTE**: Este campo contiene un diálogo estructurado con formato "**USUARIO**: [mensaje]" y "**SISTEMA**: [respuesta]". Debes incorporar TODOS los cambios y refinamientos mencionados en este diálogo.
 
 - **`required_reports`**: Un **objeto (`{}`)**.

@@ -56,3 +56,17 @@ class SDKConfig:
             'url': url,
             'key': key
         }
+
+    @staticmethod
+    def get_sender_provider() -> str:
+        """Proveedor de envío de emails (gmail|brevo)."""
+        return os.getenv('SENDER_PROVIDER', 'gmail').lower()
+
+    @staticmethod
+    def get_gmail_config() -> dict:
+        """Rutas para Gmail OAuth (credenciales y token)."""
+        return {
+            'credentials_file': os.getenv('GMAIL_CREDENTIALS_FILE', 'gmail_credentials.json'),
+            'token_file': os.getenv('GMAIL_TOKEN_FILE', 'gmail_token.json'),
+            'from_email': os.getenv('GMAIL_FROM_EMAIL')
+        }

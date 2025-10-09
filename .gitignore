@@ -83,6 +83,15 @@ phantom_base_manager.log
 *.bak
 *.backup
 
+# Archivos de debug y test
+__debug_*.html
+test_*.py
+*_test.py
+desafio.py
+perplexity_simple.py
+bce_api_explorer.py
+bce_dataflow_parser.py
+
 # =============================================================================
 # CHROME Y NAVEGADOR
 # =============================================================================
@@ -163,3 +172,12 @@ htmlcov/
 # Archivos de backup específicos
 *_backup/
 backup/
+
+# =============================================================================
+# PROYECTOS OBSOLETOS
+# =============================================================================
+# Frontend antiguo reemplazado por quantex-crm
+quantex-email-frontend/
+
+# Imágenes y gráficos obsoletos
+grafo_conocimiento_completo.png

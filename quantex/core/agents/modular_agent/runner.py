@@ -4,6 +4,7 @@ Ejecuta las herramientas usando SDKs oficiales con flujo de aprobación.
 """
 
 from typing import Dict, Any, List
+from datetime import datetime, timezone
 import re
 import os
 import sys
@@ -22,6 +23,24 @@ def _is_valid_email(email: str) -> bool:
     """Valida formato de email."""
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
+
+
+def _extract_first_name(full_name: str) -> str:
+    """Devuelve el primer nombre, preservando nombres compuestos comunes (ej. 'Juan Pablo')."""
+    if not isinstance(full_name, str):
+        return ""
+    parts = [p for p in full_name.strip().split() if p]
+    if not parts:
+        return ""
+    # Heurística para nombres compuestos frecuentes en ES
+    compound_triggers = {"Juan", "Jose", "José", "Maria", "María", "Luis", "Ana", "Carlos"}
+    if len(parts) >= 2 and parts[0] in compound_triggers:
+        # Evitar unir si el segundo token parece partícula o apellido corto común
+        second = parts[1]
+        particles = {"de", "del", "la", "las", "los"}
+        if second.lower() not in particles and second[0].isupper():
+            return f"{parts[0]} {second}"
+    return parts[0]
 
 
 def execute_tool(tool_call: Dict[str, Any]) -> Dict[str, Any]:
@@ -47,6 +66,10 @@ def execute_tool(tool_call: Dict[str, Any]) -> Dict[str, Any]:
         return _execute_llm_compose_email_template(params)
     elif tool == "brevo.send_email":
         return _execute_brevo_send_email(params)
+    elif tool == "gmail.send_email":
+        return _execute_gmail_send_email(params)
+    elif tool == "gmail.ingest_received":
+        return _execute_gmail_ingest_received(params)
     else:
         return {"ok": False, "error": f"Tool '{tool}' not implemented"}
 
@@ -282,7 +305,7 @@ def _execute_supabase_find_person(params: Dict[str, Any]) -> Dict[str, Any]:
 def _execute_llm_compose_email(params: Dict[str, Any]) -> Dict[str, Any]:
     """Ejecuta redacción de email usando LLM."""
     try:
-        recipient_name = params.get("recipient_name", "").strip()
+        recipient_name = _extract_first_name(params.get("recipient_name", "").strip())
         recipient_company = params.get("recipient_company", "")
         email_purpose = params.get("email_purpose", "").strip()
         context = params.get("context", "")
@@ -358,6 +381,8 @@ def _execute_llm_compose_email_template(params: Dict[str, Any]) -> Dict[str, Any
         recipient_name = params.get("recipient_name", "").strip()
         recipient_company = params.get("recipient_company", "")
         template_variables = params.get("template_variables", {}) or {}
+        # Permite override opcional por params, pero por defecto se usa el archivo de subject
+        subject_override = (params.get("subject") or "").strip()
         
         if not recipient_name:
             return {"ok": False, "error": "recipient_name es requerido"}
@@ -367,12 +392,14 @@ def _execute_llm_compose_email_template(params: Dict[str, Any]) -> Dict[str, Any
         subject_template_path = os.path.join(current_dir, "email_template_subject.txt")
         html_template_path = os.path.join(current_dir, "email_template.html")
         
-        # Leer plantilla de asunto
-        try:
-            with open(subject_template_path, 'r', encoding='utf-8') as f:
-                subject_template = f.read().strip()
-        except FileNotFoundError:
-            return {"ok": False, "error": f"Archivo de plantilla no encontrado: {subject_template_path}"}
+        # Leer plantilla de asunto (solo si no viene override)
+        subject_template = ""
+        if not subject_override:
+            try:
+                with open(subject_template_path, 'r', encoding='utf-8') as f:
+                    subject_template = f.read().strip()
+            except FileNotFoundError:
+                return {"ok": False, "error": f"Archivo de plantilla no encontrado: {subject_template_path}"}
         
         # Leer plantilla HTML (la usamos como contenedor de texto plano dentro de <pre>)
         try:
@@ -394,28 +421,25 @@ def _execute_llm_compose_email_template(params: Dict[str, Any]) -> Dict[str, Any
 
         # Aplicar variables a las plantillas
         company_name = recipient_company or 'Su Empresa'
-        try:
-            subject = subject_template.format(recipient_company=company_name)
-        except Exception:
-            subject = subject_template
-
-        # Extraer texto dentro de <pre> ... </pre> si existe; si no, eliminar etiquetas HTML
-        pre_match = re.search(r"<pre[^>]*>([\s\S]*?)</pre>", html_template, flags=re.IGNORECASE)
-        if pre_match:
-            text_template = pre_match.group(1)
+        if subject_override:
+            subject = subject_override
         else:
-            # Fallback: quitar etiquetas HTML simples
-            text_template = re.sub(r"<[^>]+>", "", html_template)
+            try:
+                subject = subject_template.format(recipient_company=company_name)
+            except Exception:
+                subject = subject_template
 
-        # Reemplazar variables en texto
+        # Reemplazar variables directamente en el HTML completo para mantener estilos inline
         try:
-            text_content = text_template.format_map(variables)
+            html_content = html_template.format_map(variables)
         except Exception:
-            # Fallback simple: dejar sin formatear ante error
-            text_content = text_template
-        
-        # También generar HTML mínimo usando <pre> por compatibilidad, pero lo marcamos opcional
-        html_content = f"<pre style=\"white-space: pre-wrap;\">{text_content}</pre>"
+            try:
+                html_content = html_template.format(**variables)
+            except Exception:
+                html_content = html_template
+
+        # Generar texto plano para textContent eliminando etiquetas HTML
+        text_content = re.sub(r"<[^>]+>", "", html_content)
         
         print(f"Generando email con plantilla para {recipient_name}...")
         
@@ -439,6 +463,12 @@ def _execute_llm_compose_email_template(params: Dict[str, Any]) -> Dict[str, Any
 
 def _execute_brevo_send_email(params: Dict[str, Any]) -> Dict[str, Any]:
     """Ejecuta envío de email via Brevo."""
+    # Feature flag: permitir desactivar Brevo y redirigir a Gmail
+    sender_provider = os.getenv('SENDER_PROVIDER', 'gmail').lower()
+    if sender_provider != 'brevo':
+        # Redirigir a Gmail con los mismos parámetros si es posible
+        print("⚠️  Brevo desactivado por SENDER_PROVIDER. Redirigiendo a gmail.send_email…")
+        return _execute_gmail_send_email(params)
     # Validaciones básicas
     to_list = params.get("to", [])
     subject = params.get("subject", "")
@@ -522,6 +552,64 @@ def _execute_brevo_send_email(params: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
+def _execute_gmail_send_email(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Envía email vía Gmail API usando la herramienta local (sin tracking)."""
+    to_list = params.get("to", [])
+    subject = params.get("subject", "").strip()
+    html_body = params.get("html_body", "").strip()
+    from_email = params.get("from_email")
+
+    if isinstance(to_list, str):
+        to_list = [to_list]
+
+    if not to_list:
+        return {"ok": False, "error": "Destinatario(s) requerido(s)"}
+    if not subject:
+        return {"ok": False, "error": "Asunto requerido"}
+    if not html_body:
+        return {"ok": False, "error": "Contenido HTML requerido"}
+
+    # Enviar uno por uno para reportar estado
+    try:
+        # Importar herramienta
+        from .gmail_send_tool import send_email as gmail_send
+
+        results = []
+        for to in to_list:
+            res = gmail_send(to=to, subject=subject, html_body=html_body, from_email=from_email)
+            results.append(res)
+
+        all_ok = all(r.get("ok") for r in results)
+        if all_ok:
+            return {"ok": True, "results": results}
+        # Tomar el primer error disponible para mostrarlo claramente
+        first_error = None
+        for r in results:
+            if not r.get("ok"):
+                first_error = r.get("error") or "Error en envío individual"
+                break
+        return {"ok": False, "error": first_error, "results": results}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+def _execute_gmail_ingest_received(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Ingiere emails recibidos desde Gmail y los persiste en Supabase.
+    Puentea a la herramienta local `gmail_ingest_tool.ingest_received`.
+    """
+    try:
+        # Import ligero para evitar dependencias circulares
+        from .gmail_ingest_tool import ingest_received as gmail_ingest
+
+        # Params con defaults seguros
+        max_days = int(params.get("max_days", 1))
+        max_messages = int(params.get("max_messages", 50))
+        include_spam = bool(params.get("include_spam", False))
+
+        result = gmail_ingest(max_days=max_days, max_messages=max_messages, include_spam=include_spam)
+        return result if isinstance(result, dict) else {"ok": True, "result": result}
+    except Exception as e:
+        return {"ok": False, "error": f"Error ingiriendo emails: {str(e)}"}
+
 def run_agent(user_query: str, auto_approve: bool = False) -> Dict[str, Any]:
     """
     Ejecuta el agente completo: planifica y ejecuta.
@@ -584,7 +672,7 @@ def run_agent(user_query: str, auto_approve: bool = False) -> Dict[str, Any]:
             
             if person_result:
                 params = {
-                    "recipient_name": person_result.get("nombre_contacto", params.get("recipient_name", "")),
+                    "recipient_name": _extract_first_name(person_result.get("nombre_contacto", params.get("recipient_name", ""))),
                     "recipient_company": person_result.get("empresa", {}).get("razon_social", ""),
                     "email_purpose": params.get("email_purpose", ""),
                     "tone": params.get("tone", "professional")
@@ -592,11 +680,13 @@ def run_agent(user_query: str, auto_approve: bool = False) -> Dict[str, Any]:
                 print(f"   🔗 Conectando con datos de persona: {person_result.get('nombre_contacto')}")
         
         elif tool_name == "llm.compose_email_template" and results:
-            # Usar datos de persona encontrada para plantilla
+            # Usar datos de persona encontrada para plantilla SOLO si hay resultado específico
             person_result = None
             for prev_result in results:
                 if prev_result["tool"] == "supabase.find_person" and prev_result["response"].get("found"):
-                    person_result = prev_result["response"]["person"]
+                    resp = prev_result["response"]
+                    if isinstance(resp.get("person"), dict):
+                        person_result = resp["person"]
                     break
             
             if person_result:
@@ -609,13 +699,13 @@ def run_agent(user_query: str, auto_approve: bool = False) -> Dict[str, Any]:
                     empresa_name = empresa_info
                 
                 params = {
-                    "recipient_name": person_result.get("nombre_contacto", params.get("recipient_name", "")),
+                    "recipient_name": _extract_first_name(person_result.get("nombre_contacto", params.get("recipient_name", ""))),
                     "recipient_company": empresa_name
                 }
                 print(f"   🔗 Conectando plantilla con datos de persona: {person_result.get('nombre_contacto')}")
         
         elif tool_name == "brevo.send_email" and results:
-            # Usar email redactado y datos de persona
+            # Usar email redactado y datos de persona, con validaciones estrictas
             email_result = None
             person_result = None
             
@@ -623,19 +713,119 @@ def run_agent(user_query: str, auto_approve: bool = False) -> Dict[str, Any]:
                 if prev_result["tool"] in ["llm.compose_email", "llm.compose_email_template"]:
                     email_result = prev_result["response"]
                 elif prev_result["tool"] == "supabase.find_person" and prev_result["response"].get("found"):
-                    person_result = prev_result["response"]["person"]
-            
-            if email_result and person_result:
-                # Preferimos texto plano si existe
+                    resp = prev_result["response"]
+                    if isinstance(resp.get("person"), dict):
+                        person_result = resp["person"]
+
+            # Validaciones: persona específica y correo presentes
+            if not person_result or not person_result.get("email_contacto"):
+                invalid_msg = "Falta destinatario válido: ejecute una búsqueda específica (supabase.find_person) que devuelva 'person' con 'email_contacto'."
+                print(f"   ❌ {invalid_msg}")
+                result = {"ok": False, "error": invalid_msg}
+                results.append({"tool": tool_name, "params": params, "response": result})
+                continue
+
+            # Validación: email redactado debe incluir subject y al menos text/html
+            if not email_result or not email_result.get("subject"):
+                invalid_msg = "Falta 'subject' del email: asegúrese de redactar el email antes de enviarlo."
+                print(f"   ❌ {invalid_msg}")
+                result = {"ok": False, "error": invalid_msg}
+                results.append({"tool": tool_name, "params": params, "response": result})
+                continue
+
+            # Validación: recipient_name debe existir en la redacción
+            recipient_name_present = bool(email_result.get("recipient_name"))
+            if not recipient_name_present:
+                invalid_msg = "Falta 'recipient_name' en la redacción: no se enviará el email sin destinatario nominal."
+                print(f"   ❌ {invalid_msg}")
+                result = {"ok": False, "error": invalid_msg}
+                results.append({"tool": tool_name, "params": params, "response": result})
+                continue
+
+            # Construcción segura de parámetros: priorizar HTML si existe (para respetar estilos)
+            text_body = email_result.get("text_content", "")
+            html_body = email_result.get("html_content", "")
+            params = {
+                "to": [person_result.get("email_contacto", "")],
+                "subject": email_result.get("subject", ""),
+                **({"html_body": html_body} if html_body else {}),
+                **({"text_body": text_body} if (text_body and not html_body) else {})
+            }
+            print(f"   🔗 Conectando email redactado con destinatario: {person_result.get('email_contacto')}")
+
+        elif tool_name == "gmail.send_email" and results:
+            # Conectar automáticamente subject/html/to desde pasos previos
+            email_result = None
+            person_result = None
+            came_from_template = False
+            # Soportar flag vía params o variable de entorno FORCE_SEND
+            force_send_flag = bool(params.get("force_send", False)) or (
+                str(os.getenv('FORCE_SEND', '')).lower() in ['1', 'true', 'yes']
+            )
+
+            for prev_result in results:
+                if prev_result["tool"] in ["llm.compose_email", "llm.compose_email_template"]:
+                    email_result = prev_result["response"]
+                    if prev_result["tool"] == "llm.compose_email_template":
+                        came_from_template = True
+                elif prev_result["tool"] == "supabase.find_person" and prev_result["response"].get("found"):
+                    resp = prev_result["response"]
+                    if isinstance(resp.get("person"), dict):
+                        person_result = resp["person"]
+
+            # Validaciones mínimas antes de construir los params
+            if person_result and person_result.get("email_contacto") and email_result and email_result.get("subject"):
+                # Check de envío previo de introducción si viene de plantilla
+                if came_from_template and not force_send_flag:
+                    try:
+                        from quantex.core import database_manager as db
+                        # Intentar por contact_id si se puede resolver
+                        prior_intro = None
+                        # Resolver contact_id por email
+                        contact_q = db.supabase.table('personas').select('id').eq('email_contacto', person_result.get('email_contacto')).limit(1).execute()
+                        contact_id_chk = contact_q.data[0]['id'] if contact_q and contact_q.data else None
+                        if contact_id_chk is not None:
+                            prior_intro = db.supabase.table('email_messages').select('id').eq('contact_id', contact_id_chk).eq('direction','sent').eq('message_kind','intro').limit(1).execute()
+                        else:
+                            prior_intro = db.supabase.table('email_messages').select('id').contains('to_emails', [person_result.get('email_contacto')]).eq('direction','sent').eq('message_kind','intro').limit(1).execute()
+                        if prior_intro and prior_intro.data:
+                            # Si hay consola interactiva, pedir confirmación
+                            if sys.stdin and sys.stdin.isatty():
+                                    user_ans = input("Ya existe una intro previa. ¿Enviar de todos modos? (y/n): ").strip().lower()
+                                    if user_ans == 'y':
+                                        force_send_flag = True
+                                        print("   ⚠️ Confirmado manualmente: se enviará a pesar de intro previa.")
+                                    else:
+                                        print("   ❌ Intro previa detectada. Envío cancelado por el usuario.")
+                                        result = {"ok": False, "error": "Intro ya enviada a este destinatario"}
+                                        results.append({"tool": tool_name, "params": params, "response": result})
+                                        continue
+                            else:
+                                # Sin TTY (p.ej. UI web): devolver requiere confirmación
+                                print("   ❌ Ya existe un email de introducción previo. Requiere confirmación para reenviar.")
+                                result = {
+                                    "ok": False,
+                                    "requires_confirmation": True,
+                                    "reason": "duplicate_intro",
+                                    "suggested_params": {"force_send": True},
+                                    "error": "Intro ya enviada a este destinatario"
+                                }
+                                results.append({"tool": tool_name, "params": params, "response": result})
+                                continue
+                    except Exception as _chk_e:
+                        print(f"   ⚠️ No se pudo verificar intro previa: {_chk_e}")
+                elif came_from_template and force_send_flag:
+                    print("   ⚠️ force_send=True: se omite el bloqueo de intro duplicada por petición explícita.")
                 text_body = email_result.get("text_content", "")
                 html_body = email_result.get("html_content", "")
                 params = {
-                    "to": [person_result.get("email_contacto", "")],
+                    "to": [person_result.get("email_contacto")],
                     "subject": email_result.get("subject", ""),
-                    **({"text_body": text_body} if text_body else {}),
-                    **({"html_body": html_body} if html_body else {})
+                    **({"html_body": html_body} if html_body else {}),
+                    **({"text_body": text_body} if (text_body and not html_body) else {}),
+                    **({"force_send": True} if force_send_flag else {})
                 }
-                print(f"   🔗 Conectando email redactado con destinatario: {person_result.get('email_contacto')}")
+                print(f"   🔗 Conectando email redactado con destinatario (Gmail): {person_result.get('email_contacto')}")
         
         print(f"\n📋 Ejecutando {i}/{len(plan.get('tool_calls', []))}: {tool_name}")
         print(f"   Parámetros: {params}")
@@ -645,6 +835,93 @@ def run_agent(user_query: str, auto_approve: bool = False) -> Dict[str, Any]:
         print(f"   Resultado: {result.get('ok', False)}")
         if result.get('ok', False):
             print(f"   ✅ {tool_name} ejecutado exitosamente")
+
+            # Persistencia de envíos en email_messages cuando se usa Gmail
+            if tool_name == "gmail.send_email":
+                try:
+                    # Recuperar contexto de persona y redacción
+                    email_result = None
+                    person_result_ctx = None
+                    came_from_template = False
+                    for prev_result in results:
+                        if prev_result["tool"] in ["llm.compose_email", "llm.compose_email_template"]:
+                            email_result = prev_result["response"]
+                            if prev_result["tool"] == "llm.compose_email_template":
+                                came_from_template = True
+                        elif prev_result["tool"] == "supabase.find_person" and prev_result["response"].get("found"):
+                            resp = prev_result["response"]
+                            if isinstance(resp.get("person"), dict):
+                                person_result_ctx = resp["person"]
+
+                    # Preparar campos
+                    to_list = params.get("to", []) if isinstance(params.get("to"), list) else [params.get("to")]
+                    subject_val = params.get("subject") or (email_result or {}).get("subject") or ""
+                    html_body_val = params.get("html_body") or (email_result or {}).get("html_content") or ""
+                    text_body_val = (email_result or {}).get("text_content") or ""
+                    from_email_val = os.getenv('GMAIL_FROM_EMAIL')
+
+                    # Resolver contact_id y company_id si es posible
+                    contact_id_val = None
+                    company_id_val = None
+                    try:
+                        from quantex.core import database_manager as db
+                        # Preferir primer destinatario
+                        to_email = to_list[0] if to_list else None
+                        if to_email:
+                            contact_res = db.supabase.table('personas').select('id,rut_empresa').eq('email_contacto', to_email).limit(1).execute()
+                            if contact_res and contact_res.data:
+                                contact_id_val = contact_res.data[0].get('id')
+                                rut_emp = contact_res.data[0].get('rut_empresa')
+                                if rut_emp:
+                                    emp_res = db.supabase.table('empresas').select('id').eq('rut_empresa', rut_emp).limit(1).execute()
+                                    if emp_res and emp_res.data:
+                                        company_id_val = emp_res.data[0].get('id')
+                        # Si no se encontró por correo, intentar por contexto de persona
+                        if (contact_id_val is None) and person_result_ctx and person_result_ctx.get('email_contacto'):
+                            to_email_ctx = person_result_ctx.get('email_contacto')
+                            contact_res = db.supabase.table('personas').select('id,rut_empresa').eq('email_contacto', to_email_ctx).limit(1).execute()
+                            if contact_res and contact_res.data:
+                                contact_id_val = contact_res.data[0].get('id')
+                                rut_emp = contact_res.data[0].get('rut_empresa')
+                                if rut_emp:
+                                    emp_res = db.supabase.table('empresas').select('id').eq('rut_empresa', rut_emp).limit(1).execute()
+                                    if emp_res and emp_res.data:
+                                        company_id_val = emp_res.data[0].get('id')
+
+                        # Insertar registro de email enviado
+                        message_kind_val = 'intro' if came_from_template else 'other'
+                        payload = {
+                            'direction': 'sent',
+                            **({'contact_id': contact_id_val} if contact_id_val is not None else {}),
+                            **({'company_id': company_id_val} if company_id_val is not None else {}),
+                            'from_email': from_email_val or '',
+                            'to_emails': to_list or [],
+                            'cc_emails': [],
+                            'subject': subject_val,
+                            'body_html': html_body_val,
+                            'body_text': text_body_val,
+                            'message_id': (result or {}).get('message_id'),
+                            'thread_id': None,
+                            'sent_at': datetime.now(timezone.utc).isoformat(),
+                            'message_kind': message_kind_val
+                        }
+                        db.supabase.table('email_messages').insert(payload).execute()
+                        print("   📝 Registro de envío guardado en email_messages")
+
+                        # Si es intro y hay contact_id, marcar en personas
+                        if message_kind_val == 'intro' and contact_id_val is not None:
+                            try:
+                                db.supabase.table('personas').update({
+                                    'email_sent': True,
+                                    'email_sent_at': datetime.now(timezone.utc).isoformat()
+                                }).eq('id', contact_id_val).eq('email_sent', False).execute()
+                                print("   🏷️  Marcado persona.email_sent = true")
+                            except Exception as _ue:
+                                print(f"   ⚠️ No se pudo actualizar personas.email_sent: {_ue}")
+                    except Exception as _e:
+                        print(f"   ⚠️ No se pudo registrar el envío en email_messages: {_e}")
+                except Exception as _outer_e:
+                    print(f"   ⚠️ Error general registrando email enviado: {_outer_e}")
         else:
             print(f"   ❌ Error en {tool_name}: {result.get('error', 'Error desconocido')}")
         

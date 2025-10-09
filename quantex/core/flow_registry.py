@@ -185,22 +185,6 @@ FLOW_REGISTRY = {
         }
     },
     
-    
-    # --- Flujos de Graph Explorer ---
-    "graph_explorer_query": {
-        "handler_name": "_handle_graph_explorer_query",
-        "description": "Busca información en el grafo de conocimiento usando búsqueda semántica. Útil para consultas como '¿Qué sé sobre el cobre?', '¿Cómo se relaciona la inflación con las tasas?', '¿Qué documentos tengo sobre análisis técnico?'",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "La consulta o pregunta para buscar en el grafo de conocimiento. Ejemplos: 'cobre', 'inflación y tasas de interés', 'análisis técnico', 'mercado chileno'"
-                }
-            },
-            "required": ["query"]
-        }
-    },
 
     # --- Flujos de Conversación General ---
     "social_response": {

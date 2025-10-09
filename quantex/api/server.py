@@ -472,90 +472,6 @@ def create_app():
         # Podríamos hacer esto más inteligente en el futuro, por ahora es simple.
         return jsonify({"response_blocks": [{"type": "text", "content": "¡Hola! Soy Quantex. ¿En qué puedo ayudarte hoy?", "display_target": "chat"}]})
 
-    @register_handler("graph_explorer_query")
-    def _handle_graph_explorer_query(parameters: dict, **kwargs) -> dict:
-        """Manejador para consultas al Graph Explorer - Sistema Grafo Integrado"""
-        try:
-            query = parameters.get('query', '').strip()
-            use_grafo_system = parameters.get('use_grafo_system', False)
-            
-            if not query:
-                return jsonify({"response_blocks": [{"type": "text", "content": "Por favor, proporciona una consulta para buscar en el grafo de conocimiento.", "display_target": "chat"}]})
-            
-            print(f"🧠 [Graph Explorer] Procesando consulta: '{query}' (Sistema Grafo: {use_grafo_system})")
-            
-            # NUEVO: Usar Sistema Grafo si está disponible
-            if use_grafo_system:
-                try:
-                    grafo_interface = get_grafo_interface()
-                    respuesta = grafo_interface.consultar_grafo_simple(query)
-                    
-                    return jsonify({
-                        "response_blocks": [{
-                            "type": "text", 
-                            "content": respuesta, 
-                            "display_target": "chat"
-                        }]
-                    })
-                except Exception as grafo_error:
-                    print(f"⚠️ [Graph Explorer] Error en Sistema Grafo, usando fallback: {grafo_error}")
-                    # Continuar con sistema legacy
-            
-            # SISTEMA LEGACY (fallback)
-            print("🔄 [Graph Explorer] Usando sistema legacy...")
-            
-            # Planner del grafo: derivar filtros/top_k si no vienen del router
-            from quantex.graph_explorer.planner import plan_graph_query
-            plan = plan_graph_query(query)
-            derived_filters = plan.filters
-            derived_top_k = plan.top_k
-
-            # Aplicar filtros si vienen del router (tienen precedencia)
-            filters = parameters.get('filters') or derived_filters
-            top_k = parameters.get('top_k') or derived_top_k
-            results = search_knowledge_graph(query, top_k=top_k, filters=filters)
-            
-            if not results:
-                return jsonify({
-                    "response_blocks": [{
-                        "type": "text", 
-                        "content": f"No se encontraron resultados en el grafo de conocimiento para: '{query}'. Intenta con términos más generales o diferentes palabras clave.", 
-                        "display_target": "chat"
-                    }]
-                })
-            
-            # Formatear resultados para el chat
-            response_text = f"🔍 **Resultados encontrados para: '{query}'**\n\n"
-            
-            for i, result in enumerate(results[:5], 1):  # Mostrar solo los 5 mejores
-                response_text += f"**{i}. {result['title']}**\n"
-                response_text += f"   📊 Relevancia: {result['score']:.2f}\n"
-                response_text += f"   🔗 Conexiones: {result['connections']}\n"
-                response_text += f"   📝 {result['content'][:200]}{'...' if len(result['content']) > 200 else ''}\n\n"
-            
-            if len(results) > 5:
-                response_text += f"*... y {len(results) - 5} resultados más.*\n\n"
-            
-            response_text += "💡 **Tip:** Para una síntesis más profunda, puedes usar el Graph Explorer web en `/graph-explorer`"
-            
-            return jsonify({
-                "response_blocks": [{
-                    "type": "text", 
-                    "content": response_text, 
-                    "display_target": "chat"
-                }]
-            })
-            
-        except Exception as e:
-            print(f"❌ [Graph Explorer] Error: {e}")
-            return jsonify({
-                "response_blocks": [{
-                    "type": "text", 
-                    "content": f"Error al consultar el grafo de conocimiento: {str(e)}", 
-                    "display_target": "chat"
-                }]
-            })
-
     @register_handler("out_of_domain_response")
     def _handle_out_of_domain_response(parameters, **kwargs):
 
@@ -696,12 +612,6 @@ def create_app():
     def index():
         return render_template('index.html')
     
-    # Montar blueprint de Graph Explorer (rutas dedicadas)
-    try:
-        from quantex.graph_explorer.routes import bp as graph_bp
-        app.register_blueprint(graph_bp)
-    except Exception as e:
-        print(f"⚠️ No se pudo registrar graph_explorer blueprint: {e}")
     
     @app.route('/graph-visualize', methods=['POST'])
     def graph_visualize():

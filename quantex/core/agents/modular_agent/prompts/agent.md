@@ -12,7 +12,7 @@ HERRAMIENTAS PRINCIPALES
 - supabase.find_person: Busca personas por nombre, email o RUT (herramienta específica)
 - llm.compose_email: Redacta emails profesionales personalizados usando LLM
 - llm.compose_email_template: Redacta emails usando plantilla predefinida de presentación
-- brevo.send_email: Envía emails usando Brevo SDK
+- “gmail.send_email: Envía emails usando GMAIL SDK
 
 FLUJO DE TRABAJO
 Para enviar emails, SIEMPRE sigue este orden:
@@ -23,7 +23,7 @@ Para enviar emails, SIEMPRE sigue este orden:
 CONEXIÓN DE HERRAMIENTAS
 - Usa el resultado de supabase.find_person para llm.compose_email O llm.compose_email_template
 - Usa el resultado de llm.compose_email O llm.compose_email_template para brevo.send_email
-- Para brevo.send_email, SIEMPRE incluye: to, subject, html_body
+- Para gmail.send_email, incluye to, subject, html_body
 
 CASOS DE USO
 - "Busca a Juan" → usa supabase.find_person con search_type="name", search_term="Juan"
@@ -32,8 +32,8 @@ CASOS DE USO
 - "Busca empresas grandes" → usa supabase.query_table con table_name="empresas", filters={"tipo_empresa": "grande"}
 - "Redacta email para Juan" → usa supabase.find_person + llm.compose_email
 - "Redacta email con plantilla para Juan" → usa supabase.find_person + llm.compose_email_template
-- "Envía email a Juan" → usa supabase.find_person + llm.compose_email + brevo.send_email
-- "Envía email con plantilla a Juan" → usa supabase.find_person + llm.compose_email_template + brevo.send_email
+- "Envía email a Juan" → usa supabase.find_person + llm.compose_email + gmail.send_email
+- "Envía email con plantilla a Juan" → usa supabase.find_person + llm.compose_email_template + gmail.send_email
 
 ESQUEMA DE BASE DE DATOS
 TABLA: personas

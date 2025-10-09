@@ -106,18 +106,31 @@
             "output_example": { "ok": true, "subject": "Presentación de Servicios", "html_content": "<p>Estimado/a Juan...</p>" }
           },
           {
-            "name": "brevo.send_email",
-            "description": "Envía un email usando el SDK oficial de Brevo.",
+            "name": "gmail.send_email",
+            "description": "Envía un email usando Gmail API (sin tracking).",
             "input_schema": {
               "type": "object",
               "properties": {
-                "to": { "type": "array", "items": { "type": "string" } },
-                "subject": { "type": "string" },
-                "html_body": { "type": "string" }
+                "to": { "type": "array", "items": { "type": "string" }, "description": "Lista de destinatarios" },
+                "subject": { "type": "string", "description": "Asunto del email" },
+                "html_body": { "type": "string", "description": "Contenido HTML del email" },
+                "from_email": { "type": "string", "description": "Remitente opcional" }
               },
               "required": ["to", "subject", "html_body"]
             },
-            "output_example": { "ok": true, "message_id": "brevo-12345" }
+            "output_example": { "ok": true, "results": [{ "ok": true, "message_id": "gmail-12345" }] }
+          },
+          {
+            "name": "gmail.ingest_received",
+            "description": "Lee emails recibidos recientes desde Gmail e inserta en email_messages.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "max_results": { "type": "integer", "description": "Cantidad máxima a leer", "default": 10 },
+                "query": { "type": "string", "description": "Query de Gmail (ej: 'in:inbox newer_than:2d')" }
+              }
+            },
+            "output_example": { "ok": true, "inserted_count": 3 }
           }
   ]
 }

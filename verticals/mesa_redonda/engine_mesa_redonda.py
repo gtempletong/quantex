@@ -37,20 +37,14 @@ from quantex.core.agent_tools import get_expert_opinion
 from quantex.core.handler_registry import register_handler
 import logging, os
 
-# --- Logger persistente para diagnóstico de load_data ---
+# --- Logger para diagnóstico de load_data (solo consola) ---
 try:
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-    LOGS_DIR = os.path.join(PROJECT_ROOT, 'logs')
-    os.makedirs(LOGS_DIR, exist_ok=True)
     _ld_logger = logging.getLogger('quantex.load_data')
     if not _ld_logger.handlers:
         _ld_logger.setLevel(logging.INFO)
-        _fh = logging.FileHandler(os.path.join(LOGS_DIR, 'load_data.log'), encoding='utf-8')
-        _fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
-        # También enviar a consola para ver en terminal
         _sh = logging.StreamHandler(sys.stdout)
         _sh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
-        _ld_logger.addHandler(_fh)
         _ld_logger.addHandler(_sh)
 except Exception:
     _ld_logger = logging.getLogger('quantex.load_data')
@@ -99,17 +93,6 @@ def _run_news_editor(raw_evidence_categorized: dict) -> dict | None:
             print("      -> 🟡 No hay datos para enviar al Editor de Noticias.")
             return {}
 
-        # --- ESPÍA: Log de entrada para el Editor ---
-        try:
-            os.makedirs(os.path.join(PROJECT_ROOT, "logs"), exist_ok=True)
-            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            spy_input_path = os.path.join(PROJECT_ROOT, "logs", f"editor_input_{ts}.json")
-            with open(spy_input_path, "w", encoding="utf-8") as f:
-                json.dump(raw_evidence_categorized, f, ensure_ascii=False, indent=2, default=str)
-            print(f"      -> 🕵️  [ESPÍA] Guardado input del Editor: {spy_input_path}")
-        except Exception as _e:
-            print(f"      -> ⚠️  [ESPÍA] No se pudo guardar el input del Editor: {_e}")
-
         # Helper para deduplicar puntos de evidencia (por texto normalizado)
         def _dedupe_points(items: list[dict]) -> list[dict]:
             seen = set()
@@ -151,15 +134,6 @@ def _run_news_editor(raw_evidence_categorized: dict) -> dict | None:
 
             if not structured_synthesis:
                 raise Exception("El Editor de Noticias no pudo generar una salida JSON válida.")
-
-            # Espía salida
-            try:
-                spy_output_path = os.path.join(PROJECT_ROOT, "logs", f"editor_output_{ts}.json")
-                with open(spy_output_path, "w", encoding="utf-8") as f:
-                    json.dump(structured_synthesis, f, ensure_ascii=False, indent=2)
-                print(f"      -> 🕵️  [ESPÍA] Guardado output del Editor: {spy_output_path}")
-            except Exception as _e:
-                print(f"      -> ⚠️  [ESPÍA] No se pudo guardar el output del Editor: {_e}")
 
             print("    -> ✅ [Editor de Noticias] Briefings categóricos generados exitosamente.")
             return structured_synthesis
@@ -257,15 +231,6 @@ def _run_news_editor(raw_evidence_categorized: dict) -> dict | None:
                 "tesis_del_dia": chosen_thesis or "Resumen integrado de noticias",
                 "puntos_de_evidencia_clave": merged_points
             }
-
-        # Espía salida combinada
-        try:
-            spy_output_path = os.path.join(PROJECT_ROOT, "logs", f"editor_output_{ts}.json")
-            with open(spy_output_path, "w", encoding="utf-8") as f:
-                json.dump(merged_result, f, ensure_ascii=False, indent=2)
-            print(f"      -> 🕵️  [ESPÍA] Guardado output del Editor (merge): {spy_output_path}")
-        except Exception as _e:
-            print(f"      -> ⚠️  [ESPÍA] No se pudo guardar el output del Editor (merge): {_e}")
 
         print("    -> ✅ [Editor de Noticias] Briefings categóricos generados (con chunking) exitosamente.")
         return merged_result
