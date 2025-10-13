@@ -77,13 +77,6 @@ def run_clp_fair_value_model(evidence_workspace: dict, params: dict) -> dict:
         df_fv_chart.reset_index(inplace=True)
         df_fv_chart['date'] = pd.to_datetime(df_fv_chart['date']).dt.strftime('%Y-%m-%dT%H:%M:%S')
         results_packet['fair_value_model_results'] = df_fv_chart.to_dict('records')
-
-        contrib_df = pd.DataFrame(index=X.index)
-        for var in model_results.params.index:
-            contrib_df[var] = X[var] * model_results.params[var] if var != 'const' else model_results.params[var]
-        contrib_df.reset_index(inplace=True)
-        contrib_df['date'] = pd.to_datetime(contrib_df['date']).dt.strftime('%Y-%m-%dT%H:%M:%S')
-        results_packet['fair_value_contributions_timeseries'] = contrib_df.to_dict('records')
         
         return results_packet
 
@@ -210,16 +203,6 @@ def run(parameters: dict) -> dict:
                                     series['data_key'] = clave_simple
                                 except KeyError:
                                     pass # La herramienta interna manejará el dato faltante
-                
-                # Para el gráfico de contribución
-                data_key_contrib = params.get("data_key")
-                if data_key_contrib:
-                    try:
-                         # Buscamos la clave (puede ser anidada) y la ponemos en el workspace temporal
-                        contrib_data = dpath.util.get(workspace, data_key_contrib, separator='.')
-                        viz_workspace[data_key_contrib] = contrib_data
-                    except KeyError:
-                        pass
 
                 viz_result = tool_function(evidence_workspace=viz_workspace, params=params)
                 if viz_result:

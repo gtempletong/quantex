@@ -18,11 +18,11 @@ FLUJO DE TRABAJO
 Para enviar emails, SIEMPRE sigue este orden:
 1. supabase.find_person → obtiene datos de la persona
 2. llm.compose_email O llm.compose_email_template → redacta el email
-3. brevo.send_email → envía usando el email redactado
+3. gmail.send_email → envía usando el email redactado
 
 CONEXIÓN DE HERRAMIENTAS
 - Usa el resultado de supabase.find_person para llm.compose_email O llm.compose_email_template
-- Usa el resultado de llm.compose_email O llm.compose_email_template para brevo.send_email
+- Usa el resultado de llm.compose_email O llm.compose_email_template para gmail.send_email
 - Para gmail.send_email, incluye to, subject, html_body
 
 CASOS DE USO

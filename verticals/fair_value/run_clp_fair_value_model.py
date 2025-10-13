@@ -5,6 +5,8 @@ import sys
 import pandas as pd
 import statsmodels.api as sm
 from dotenv import load_dotenv
+import matplotlib
+matplotlib.use('Agg')  # Usar backend no-interactivo (debe estar antes de importar pyplot)
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime
@@ -16,15 +18,13 @@ if PROJECT_ROOT not in sys.path:
 
 from quantex.core.data_fetcher import get_data_series
 
-# --- CONFIGURACIÓN DEL MODELO (MODIFICA AQUÍ PARA EXPERIMENTAR) ---
+# --- CONFIGURACIÓN DEL MODELO (SINCRONIZADA CON fair_value_clp.yaml) ---
 MODEL_CONFIG = {
     "target_variable": "USDCLP.FOREX",
     "predictor_variables": [
-        
         "lme",
-        "LATAM Currencies",
-        "EEM Currencies",
-        "chile_country_risk_10y",
+        "latam_currency_index",
+        "DXY",
         "Rate_Spread_2Y"  # Este es un campo calculado, no se busca directamente
     ],
     "spread_calculation": {
@@ -32,7 +32,7 @@ MODEL_CONFIG = {
         "component_1": "Benchmark BTP 2 años",
         "component_2": "US2Y.GBOND"
     },
-    "days_of_history": 1300
+    "days_of_history": 2000  # Ampliado a ~5.5 años para mayor robustez
 }
 # ---------------------------------------------------------------------
 
@@ -71,7 +71,7 @@ def generate_model_report_html(model, X, Y, last_predictors):
     """
     print(" -> 📄 Generando reporte HTML del modelo...")
     
-    predicted_value = model.predict(last_predictors)[0]
+    predicted_value = model.predict(last_predictors).iloc[0]
     last_real_value = Y.iloc[-1]
     
     coefficients = model.params
@@ -102,29 +102,6 @@ def generate_model_report_html(model, X, Y, last_predictors):
     fig1.savefig(chart_path_fv, dpi=100, bbox_inches='tight')
     plt.close(fig1)
 
-    # --- INICIO DE LA CORRECCIÓN: GRÁFICO DE LÍNEAS DE CONTRIBUCIONES ---
-    print(" -> 📊 Generando gráfico de contribuciones (versión de líneas)...")
-    contrib_df = pd.DataFrame(index=X.index)
-    for var in coefficients.index:
-        contrib_df[var] = X[var] * coefficients[var] if var != 'const' else coefficients[var]
-
-    fig2, ax2 = plt.subplots(figsize=(12, 6))
-    
-    # Graficamos cada contribución como una línea separada
-    for column in contrib_df.columns:
-        ax2.plot(contrib_df.index, contrib_df[column], label=column)
-    
-    ax2.set_title('Contribución Histórica de Variables al Fair Value', fontsize=16)
-    ax2.set_ylabel('Impacto en Precio USD/CLP', fontsize=12)
-    ax2.legend(loc='upper left')
-    ax2.grid(True, linestyle='--', alpha=0.3)
-    fig2.autofmt_xdate()
-    
-    chart_path_contrib = 'reporte_contribuciones_chart.png'
-    fig2.savefig(chart_path_contrib, dpi=100, bbox_inches='tight')
-    plt.close(fig2)
-    # --- FIN DE LA CORRECCIÓN ---
-
     summary_html = model.summary().as_html()
     html_template = f"""
     <html><head><title>Reporte de Regresión Fair Value</title>
@@ -146,10 +123,8 @@ def generate_model_report_html(model, X, Y, last_predictors):
             <p><b>Precio de Mercado Actual:</b> {last_real_value:.2f}</p>
             <p><b>Fair Value (Modelo):</b> {predicted_value:.2f}</p>
         </div>
-        <h2>Gráfico de Desempeño del Modelo</h2>
+        <h2>Gráfico: Fair Value vs. Precio de Mercado</h2>
         <img src="{chart_path_fv}" alt="Gráfico de Fair Value">
-        <h2>Gráfico de Contribución de Variables</h2>
-        <img src="{chart_path_contrib}" alt="Gráfico de Contribuciones">
         <h2>Tabla de Contribuciones (Último Día)</h2>
         {contrib_html}
         <h2>Resumen Estadístico Completo (OLS)</h2>

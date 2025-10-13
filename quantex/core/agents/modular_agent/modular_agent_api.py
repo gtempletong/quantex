@@ -515,9 +515,12 @@ def send_report():
         print(f"\n📧 Enviando reporte a {len(recipients)} destinatarios...")
         print(f"📋 Asunto: {subject}")
         
-        # Importar execute_tool para usar directamente
+        # Importar execute_tool y db para usar directamente
         from quantex.core.agents.modular_agent.runner import execute_tool
+        from quantex.core.agents.modular_agent.database import Database
+        from datetime import datetime, timezone
         
+        db = Database()
         results = []
         successful_sends = 0
         
@@ -535,6 +538,63 @@ def send_report():
                 
                 print(f"  -> 📤 Enviando a: {email}")
                 result = execute_tool(tool_call)
+                
+                # SIEMPRE guardar en email_messages (exitoso o fallido)
+                try:
+                    # Buscar contact_id por email
+                    contact_id_val = None
+                    company_id_val = None
+                    
+                    contact_res = db.supabase.table('personas').select('id,rut_empresa').eq('email_contacto', email).limit(1).execute()
+                    if contact_res and contact_res.data:
+                        contact_id_val = contact_res.data[0].get('id')
+                        rut_emp = contact_res.data[0].get('rut_empresa')
+                        if rut_emp:
+                            emp_res = db.supabase.table('empresas').select('id').eq('rut_empresa', rut_emp).limit(1).execute()
+                            if emp_res and emp_res.data:
+                                company_id_val = emp_res.data[0].get('id')
+                    
+                    # Determinar el estado del envío
+                    sent_at = datetime.now(timezone.utc).isoformat() if result.get("ok") else None
+                    message_id = result.get('message_id') if result.get("ok") else None
+                    
+                    # Guardar en email_messages (siempre, exitoso o fallido)
+                    payload = {
+                        'direction': 'sent',
+                        **({'contact_id': contact_id_val} if contact_id_val is not None else {}),
+                        **({'company_id': company_id_val} if company_id_val is not None else {}),
+                        'from_email': '',  # Se llenará desde Gmail
+                        'to_emails': [email],
+                        'cc_emails': [],
+                        'subject': subject,
+                        'body_html': report_html,
+                        'body_text': '',  # Podríamos extraer texto del HTML si es necesario
+                        'message_id': message_id,
+                        'thread_id': None,
+                        'sent_at': sent_at,  # null si falló
+                        'message_kind': 'other'
+                    }
+                    db.supabase.table('email_messages').insert(payload).execute()
+                    
+                    if result.get("ok"):
+                        print(f"    📝 Registro guardado en email_messages (enviado)")
+                        
+                        # Actualizar personas.email_sent solo si fue exitoso
+                        if contact_id_val is not None:
+                            try:
+                                db.supabase.table('personas').update({
+                                    'email_sent': True,
+                                    'email_sent_at': sent_at
+                                }).eq('id', contact_id_val).eq('email_sent', False).execute()
+                                print(f"    🏷️  Marcado persona.email_sent = true")
+                            except Exception as _ue:
+                                print(f"    ⚠️ No se pudo actualizar personas.email_sent: {_ue}")
+                    else:
+                        print(f"    📝 Registro guardado en email_messages (fallido: {result.get('error')})")
+                        
+                except Exception as save_error:
+                    print(f"    ⚠️ Error guardando en BD: {save_error}")
+                
                 results.append({
                     "email": email,
                     "success": result.get("ok", False),

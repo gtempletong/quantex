@@ -51,14 +51,8 @@ visualization_pipeline:
               column_name: "fair_value"
               display_name: "Valor Justo (Modelo)"
       chart_type: "custom_line_chart"
-      html_title: "1. Valor Justo vs. Precio de Mercado (USD/CLP)"
+      html_title: "Valor Justo vs. Precio de Mercado (USD/CLP)"
       chart_period_days: 1000
-  
-  - tool_name: "generate_chart"
-    parameters:
-      data_key: "fair_value_results.fair_value_contributions_timeseries"
-      chart_type: "contribution_stack_chart"
-      html_title: "2. Contribución de Variables al Modelo"
 
 # Esquema de salida
 output_schema:

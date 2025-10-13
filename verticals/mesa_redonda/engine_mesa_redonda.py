@@ -292,7 +292,7 @@ def _run_dossier_curator(report_keyword: str, report_def: dict) -> dict:
             edges_res = db.supabase.table('edges').select('target_id').eq('source_id', topic_node_id).eq('relationship_type', 'generó_aprendizaje').execute()
             if edges_res.data:
                 learning_node_ids = [edge['target_id'] for edge in edges_res.data]
-                learnings_res = db.supabase.table('nodes').select('content').in_('id', learning_node_ids).order('created_at', desc=True).limit(15).execute()
+                learnings_res = db.supabase.table('nodes').select('content').in_('id', learning_node_ids).order('created_at', desc=True).limit(0).execute()
                 if learnings_res.data:
                     all_learnings = [node['content'] for node in learnings_res.data if node.get('content')]
                     # Se añaden al paquete de trabajo para el Editor.

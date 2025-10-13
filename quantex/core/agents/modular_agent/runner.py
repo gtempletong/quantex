@@ -463,12 +463,9 @@ def _execute_llm_compose_email_template(params: Dict[str, Any]) -> Dict[str, Any
 
 def _execute_brevo_send_email(params: Dict[str, Any]) -> Dict[str, Any]:
     """Ejecuta envío de email via Brevo."""
-    # Feature flag: permitir desactivar Brevo y redirigir a Gmail
-    sender_provider = os.getenv('SENDER_PROVIDER', 'gmail').lower()
-    if sender_provider != 'brevo':
-        # Redirigir a Gmail con los mismos parámetros si es posible
-        print("⚠️  Brevo desactivado por SENDER_PROVIDER. Redirigiendo a gmail.send_email…")
-        return _execute_gmail_send_email(params)
+    # Siempre redirigir a Gmail (Brevo desactivado)
+    print("⚠️  Brevo desactivado. Redirigiendo a gmail.send_email…")
+    return _execute_gmail_send_email(params)
     # Validaciones básicas
     to_list = params.get("to", [])
     subject = params.get("subject", "")

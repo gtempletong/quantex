@@ -55,6 +55,25 @@
     // Esta variable guardará el estado de la sesión entre peticiones.
     let sessionState = {};
 
+    // Check for action parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const actionParam = urlParams.get('action');
+    if (actionParam) {
+        // Clear the URL parameter
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Execute the action
+        if (actionParam === 'trigger_technical_analysis') {
+            const ticker = window.prompt("Por favor, ingresa el ticker a analizar (ej: SQM-B.SN):");
+            if (ticker && ticker.trim() !== '') {
+                const command = `analiza en lote ${ticker.trim()}`;
+                handleUserRequest(command);
+            }
+        } else {
+            handleUserRequest(actionParam);
+        }
+    }
+
     actionMenu.addEventListener('change', (e) => {
         const selectedAction = e.target.value;
         if (selectedAction === 'trigger_technical_analysis') {

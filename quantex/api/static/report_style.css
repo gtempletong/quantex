@@ -33,13 +33,13 @@ body {
 }
 
 #chat-container { 
-    flex: 1;
+    flex: 2;
     min-width: 400px;
 }
 
 /* El panel de visualización es responsable de su propio scroll */
 #panel-container { 
-    flex: 2;
+    flex: 3;
     overflow-y: auto; 
 }
 
