@@ -517,10 +517,8 @@ def send_report():
         
         # Importar execute_tool y db para usar directamente
         from quantex.core.agents.modular_agent.runner import execute_tool
-        from quantex.core.agents.modular_agent.database import Database
+        from quantex.core import database_manager as db
         from datetime import datetime, timezone
-        
-        db = Database()
         results = []
         successful_sends = 0
         
