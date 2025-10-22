@@ -10,6 +10,9 @@ import pytz
 import numpy as np
 import yaml
 from quantex.core.ai_services import ai_services
+import pdfkit
+import io
+from playwright.sync_api import sync_playwright
 
 # --- Conexión a Supabase ---p
 try:
@@ -224,11 +227,256 @@ def update_dossier_workspace(dossier_id: str, agent_name: str, findings: dict) -
         print(f"❌ Error al actualizar workspace del dossier {dossier_id}: {e}")
         return None
 
+def html_to_pdf(html_content: str, report_keyword: str = None) -> bytes:
+    """
+    Convierte contenido HTML a PDF usando Playwright para máximo control visual.
+    
+    Args:
+        html_content: String con el HTML completo a convertir
+        report_keyword: Tipo de reporte para usar generador específico
+        
+    Returns:
+        bytes: Contenido del PDF en bytes
+    """
+    try:
+        print("    -> 📄 Convirtiendo HTML a PDF con Playwright...")
+        
+        # NUEVO: Usar wkhtmltopdf para reportes CLP/Cobre (Mesa Redonda)
+        if report_keyword and report_keyword in ['clp', 'cobre']:
+            print(f"    -> 🔍 Report keyword detectado: '{report_keyword}'")
+            print("    -> 🎯 Usando wkhtmltopdf para reporte Mesa Redonda (CLP/Cobre)...")
+            try:
+                from verticals.pdf_generator import generate_pdf_with_wkhtmltopdf
+                pdf_bytes = generate_pdf_with_wkhtmltopdf(html_content)
+                if pdf_bytes:
+                    print(f"    -> ✅ PDF generado exitosamente con wkhtmltopdf ({len(pdf_bytes)} bytes)")
+                    return pdf_bytes
+                else:
+                    print("    -> ⚠️ wkhtmltopdf no generó PDF, usando fallback...")
+            except Exception as e:
+                print(f"    -> ⚠️ Error con wkhtmltopdf: {e}")
+                print("    -> 🔄 Usando Playwright como fallback...")
+        
+        # Intentar usar generador específico de la vertical (otros reportes)
+        enhanced_html = None
+        
+        if report_keyword:
+            print(f"    -> 🔍 Report keyword detectado: '{report_keyword}'")
+            try:
+                if report_keyword.startswith('comite_tecnico'):
+                    print("    -> 🎯 Usando generador especializado para análisis técnico...")
+                    from verticals.pdf_generator import generate_pdf_html
+                    enhanced_html = generate_pdf_html(html_content, report_keyword)
+                    
+                elif report_keyword.startswith('mesa_redonda'):
+                    print("    -> 🎯 Usando generador especializado para mesa redonda...")
+                    # TODO: Implementar cuando se cree
+                    # from verticals.mesa_redonda.pdf_generator import generate_pdf_html
+                    # enhanced_html = generate_pdf_html(html_content)
+                    
+                elif report_keyword.startswith('fair_value'):
+                    print("    -> 🎯 Usando generador especializado para fair value...")
+                    # TODO: Implementar cuando se cree
+                    # from verticals.fair_value.pdf_generator import generate_pdf_html
+                    # enhanced_html = generate_pdf_html(html_content)
+                    
+            except ImportError as e:
+                print(f"    -> ⚠️ Generador especializado no disponible: {e}")
+            except Exception as e:
+                print(f"    -> ⚠️ Error en generador especializado: {e}")
+        
+        # Fallback: usar CSS básico si no hay generador específico
+        if not enhanced_html:
+            print("    -> 🔄 Usando CSS básico para PDF...")
+            enhanced_html = add_basic_pdf_css(html_content)
+        
+        # Usar Playwright para generar PDF con control total
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            
+            # Configurar la página para PDF
+            page.set_content(enhanced_html)
+            
+            # Generar PDF con configuración optimizada
+            pdf_bytes = page.pdf(
+                format='A4',
+                margin={
+                    'top': '0.5in',
+                    'right': '0.5in', 
+                    'bottom': '0.5in',
+                    'left': '0.5in'
+                },
+                print_background=True,  # ¡IMPORTANTE! Para fondos oscuros
+                prefer_css_page_size=True,
+                display_header_footer=False
+            )
+            
+            browser.close()
+            
+        print(f"    -> ✅ PDF generado exitosamente con Playwright ({len(pdf_bytes)} bytes)")
+        return pdf_bytes
+        
+    except Exception as e:
+        print(f"    -> ❌ Error generando PDF con Playwright: {e}")
+        print(f"    -> 🔄 Intentando con pdfkit como fallback...")
+        
+        # Fallback a pdfkit si Playwright falla
+        try:
+            options = {
+                'page-size': 'A4',
+                'margin-top': '0.5in',
+                'margin-right': '0.5in',
+                'margin-bottom': '0.5in',
+                'margin-left': '0.5in',
+                'encoding': "UTF-8",
+                'no-outline': None,
+                'enable-local-file-access': None,
+                'print-media-type': None,
+                'disable-smart-shrinking': None,
+                'zoom': '0.8',
+                'dpi': '300',
+                'image-quality': '94',
+                'disable-external-links': None,
+                'disable-internal-links': None
+            }
+            
+            config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+            
+            if isinstance(enhanced_html, str):
+                enhanced_html = enhanced_html.encode('utf-8').decode('utf-8')
+            
+            pdf_bytes = pdfkit.from_string(enhanced_html, False, options=options, configuration=config)
+            print(f"    -> ✅ PDF generado con pdfkit fallback ({len(pdf_bytes)} bytes)")
+            return pdf_bytes
+            
+        except Exception as fallback_error:
+            print(f"    -> ❌ Error en fallback pdfkit: {fallback_error}")
+            return None
+
+def add_basic_pdf_css(html_content: str) -> str:
+    """
+    Fallback: Agrega CSS básico para PDF al HTML original.
+    """
+    pdf_css = """
+    <style>
+    @page {
+        size: A4;
+        margin: 0.5in;
+    }
+    
+    body {
+        font-family: 'Arial', sans-serif;
+        font-size: 11px;
+        line-height: 1.3;
+        color: #333;
+    }
+    
+    h1 {
+        font-size: 16px;
+        margin-top: 15px;
+        margin-bottom: 10px;
+        page-break-after: avoid;
+        color: #2c3e50;
+    }
+    
+    h2 {
+        font-size: 14px;
+        margin-top: 12px;
+        margin-bottom: 8px;
+        page-break-after: avoid;
+        color: #34495e;
+    }
+    
+    h3 {
+        font-size: 12px;
+        margin-top: 10px;
+        margin-bottom: 6px;
+        page-break-after: avoid;
+    }
+    
+    p {
+        margin-bottom: 6px;
+        text-align: justify;
+    }
+    
+    img {
+        max-width: 100%;
+        height: auto;
+        page-break-inside: avoid;
+        margin: 8px 0;
+    }
+    
+    .page-break {
+        page-break-before: always;
+    }
+    
+    .no-break {
+        page-break-inside: avoid;
+    }
+    </style>
+    """
+    
+    return pdf_css + html_content
+
+def upload_pdf_to_storage(pdf_bytes: bytes, pdf_path: str) -> str | None:
+    """
+    Sube un PDF a Supabase Storage y devuelve la URL pública.
+    
+    Args:
+        pdf_bytes: Contenido del PDF en bytes
+        pdf_path: Ruta dentro del bucket (ej: 'comite_tecnico_cobre/2025-10-19_HGF_abc123.pdf')
+        
+    Returns:
+        str: URL pública del PDF o None si falla
+    """
+    if not supabase:
+        print("    -> ❌ Cliente de Supabase no disponible")
+        return None
+    
+    if not pdf_bytes:
+        print("    -> ⚠️ No hay contenido PDF para subir")
+        return None
+    
+    try:
+        bucket_name = 'report-pdfs'
+        
+        # Configuración para sobrescribir si existe
+        file_options = {
+            "content-type": "application/pdf",
+            "upsert": "true"
+        }
+        
+        print(f"    -> 📤 Subiendo PDF a Storage: {bucket_name}/{pdf_path}")
+        
+        # Subir el archivo
+        supabase.storage.from_(bucket_name).upload(
+            path=pdf_path,
+            file=pdf_bytes,
+            file_options=file_options
+        )
+        
+        # Obtener URL pública
+        public_url = supabase.storage.from_(bucket_name).get_public_url(pdf_path)
+        
+        print(f"    -> ✅ PDF subido exitosamente")
+        print(f"    -> 🔗 URL: {public_url}")
+        
+        return public_url
+        
+    except Exception as e:
+        print(f"    -> ❌ Error subiendo PDF a Storage: {e}")
+        return None
+
 # La firma de la función ahora incluye 'source_dossier_id'
 def insert_generated_artifact(report_keyword: str, artifact_content: str, artifact_type: str, results_packet: dict | None = None, source_dossier_id: str | None = None, ticker: str | None = None) -> dict | None:
     """
-    (Versión 3.0 - Final)
-    Inserta un artefacto. Si recibe un 'results_packet', lo guarda en la columna 'content_dossier'.
+    (Versión 4.0 - Con Generación Automática de PDF)
+    Inserta un artefacto en 3 formatos:
+    1. JSON (en content_dossier)
+    2. HTML (en full_content)
+    3. PDF (en Storage, URL en pdf_url)
+    
     Es 100% retrocompatible.
     """
     if not supabase: return None
@@ -238,21 +486,57 @@ def insert_generated_artifact(report_keyword: str, artifact_content: str, artifa
             'full_content': artifact_content,
             'artifact_type': artifact_type,
             'source_dossier_id': source_dossier_id,
-            'ticker': ticker  # <-- AÑADIMOS LA COLUMNA TICKER
+            'ticker': ticker
         }
         
         if results_packet:
             data_to_insert['content_dossier'] = results_packet
 
+        # Insertar el artifact primero
         response = supabase.table('generated_artifacts').insert(data_to_insert).execute()
         
-        if response.data:
-            print(f"✅ Artefacto para '{report_keyword}' guardado con ID: {response.data[0]['id']}")
-            return response.data[0]
-        return None
+        if not response.data:
+            return None
+        
+        artifact_id = response.data[0]['id']
+        print(f"✅ Artefacto para '{report_keyword}' guardado con ID: {artifact_id}")
+        
+        # NUEVO: Generar PDF automáticamente si hay contenido HTML
+        if artifact_content and len(artifact_content.strip()) > 0:
+            print(f"📄 Generando PDF para artifact {artifact_id}...")
+            
+            # 1. Convertir HTML a PDF usando generador específico
+            pdf_bytes = html_to_pdf(artifact_content, report_keyword)
+            
+            if pdf_bytes:
+                # 2. Construir ruta del archivo
+                fecha = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+                ticker_part = ticker if ticker else 'report'
+                artifact_id_short = str(artifact_id)[:8]
+                pdf_filename = f"{fecha}_{ticker_part}_{artifact_id_short}.pdf"
+                pdf_path = f"{report_keyword}/{pdf_filename}"
+                
+                # 3. Subir a Storage
+                pdf_url = upload_pdf_to_storage(pdf_bytes, pdf_path)
+                
+                # 4. Actualizar artifact con la URL del PDF
+                if pdf_url:
+                    supabase.table('generated_artifacts')\
+                        .update({'pdf_url': pdf_url})\
+                        .eq('id', artifact_id)\
+                        .execute()
+                    print(f"✅ PDF registrado: {pdf_url}")
+                    # Actualizar el objeto de respuesta con la URL
+                    response.data[0]['pdf_url'] = pdf_url
+            else:
+                print(f"⚠️  No se pudo generar PDF para artifact {artifact_id}")
+        
+        return response.data[0]
         
     except Exception as e:
         print(f"❌ Error al insertar artefacto: {e}")
+        import traceback
+        traceback.print_exc()
         return None 
 
 def get_artifact_by_id(artifact_id: str) -> dict | None:
@@ -519,6 +803,36 @@ def promote_draft_to_final(draft_id: str) -> dict | None:
         print(f"    -> ✅ Artefacto {draft_id} promovido a '{new_artifact_type}'. Recuperando versión final...")
         final_artifact = get_artifact_by_id(draft_id)
         
+        # PASO 3: Generar PDF automáticamente para el informe final
+        if final_artifact and final_artifact.get('full_content'):
+            print(f"    -> 📄 Generando PDF para informe final promovido...")
+            try:
+                pdf_bytes = html_to_pdf(final_artifact['full_content'], final_artifact['report_keyword'])
+                
+                if pdf_bytes:
+                    # Construir ruta del archivo
+                    fecha = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+                    ticker_part = final_artifact.get('ticker', 'report')
+                    artifact_id_short = str(draft_id)[:8]
+                    pdf_filename = f"{fecha}_{ticker_part}_{artifact_id_short}.pdf"
+                    pdf_path = f"{final_artifact['report_keyword']}/{pdf_filename}"
+                    
+                    # Subir PDF a Storage
+                    pdf_url = upload_pdf_to_storage(pdf_bytes, pdf_path)
+                    
+                    if pdf_url:
+                        # Actualizar artifact con la URL del PDF
+                        supabase.table('generated_artifacts').update({'pdf_url': pdf_url}).eq('id', draft_id).execute()
+                        print(f"    -> ✅ PDF generado para informe final: {pdf_url}")
+                        # Actualizar el objeto final_artifact con la nueva URL
+                        final_artifact['pdf_url'] = pdf_url
+                    else:
+                        print(f"    -> ⚠️ Error subiendo PDF del informe final")
+                else:
+                    print(f"    -> ⚠️ Error generando PDF del informe final")
+            except Exception as pdf_error:
+                print(f"    -> ❌ Error en generación de PDF: {pdf_error}")
+        
         return final_artifact
         # --- FIN DE LA CORRECCIÓN FINAL ---
 
@@ -698,13 +1012,25 @@ def get_latest_report(report_keyword: str = None, ticker: str = None, artifact_t
     
     try:
         query = supabase.table('generated_artifacts').select('*')
+
+        # Normalizar sinónimos de tópicos a artifact_type almacenados
+        # Ej.: UI usa 'copper' pero en BD está como 'cobre'
+        topic_synonyms = {
+            'copper': 'cobre',
+            'peso_chileno': 'clp',
+            'peso chileno': 'clp',
+        }
+        normalized_report_keyword = report_keyword
+        if isinstance(report_keyword, str):
+            key = report_keyword.strip().lower()
+            normalized_report_keyword = topic_synonyms.get(key, key)
         
         # Construir la consulta basada en los parámetros proporcionados
-        if report_keyword and ticker:
+        if normalized_report_keyword and ticker:
             # Caso 1: Ambos parámetros - buscar por ticker específico en un tipo de informe específico
-            artifact_type = f'report_{report_keyword.replace(" ", "_")}{artifact_type_suffix}'
+            artifact_type = f'report_{normalized_report_keyword.replace(" ", "_")}{artifact_type_suffix}'
             query = query.eq('artifact_type', artifact_type).eq('ticker', ticker)
-            print(f"🛠️ [DB Manager] Buscando informe '{report_keyword}' para ticker '{ticker}'...")
+            print(f"🛠️ [DB Manager] Buscando informe '{normalized_report_keyword}' para ticker '{ticker}'...")
             
         elif ticker:
             # Caso 2: Solo ticker - buscar cualquier informe final para ese ticker
@@ -713,12 +1039,12 @@ def get_latest_report(report_keyword: str = None, ticker: str = None, artifact_t
             
         else:
             # Caso 3: Solo report_keyword - buscar el último informe de ese tipo (comportamiento original)
-            artifact_type = f'report_{report_keyword.replace(" ", "_")}{artifact_type_suffix}'
+            artifact_type = f'report_{normalized_report_keyword.replace(" ", "_")}{artifact_type_suffix}'
             query = query.eq('artifact_type', artifact_type)
-            print(f"🛠️ [DB Manager] Buscando último informe '{report_keyword}'...")
+            print(f"🛠️ [DB Manager] Buscando último informe '{normalized_report_keyword}'...")
         
         # Ejecutar consulta ordenada por fecha descendente
-        response = query.order('created_at', desc=True).limit(1).single().execute()
+        response = query.order('created_at', desc=True).limit(1).maybe_single().execute()
         
         if response.data:
             artifact_id = response.data.get('id', 'N/A')

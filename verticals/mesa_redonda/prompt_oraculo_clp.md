@@ -40,7 +40,7 @@
 ## REGLAS DE ESTILO Y REDACCIÓN
 
 ### Nivel Técnico
-- Escribe para un nivel ejecutivo, no técnico
+- Escribe para un nivel básico, no técnico
 - Evita jerga financiera compleja
 - Explica conceptos técnicos en términos simples y claros
 - Usa analogías cuando sea útil para explicar conceptos complejos

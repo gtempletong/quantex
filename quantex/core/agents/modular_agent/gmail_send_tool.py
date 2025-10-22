@@ -69,28 +69,28 @@ def _authenticate_gmail(credentials_file: Optional[str], token_file: Optional[st
     return build('gmail', 'v1', credentials=creds)
 
 
-def _create_message(to_email: str, subject: str, html_body: str, from_email: Optional[str]) -> Dict[str, Any]:
+def _create_message(to_email: str, subject: str, body: str, from_email: Optional[str]) -> Dict[str, Any]:
     message = MIMEMultipart()
     message['to'] = to_email
     message['subject'] = subject
     if from_email:
         message['from'] = from_email
 
-    message.attach(MIMEText(html_body, 'html'))
+    message.attach(MIMEText(body, 'plain'))
 
     raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
     return {'raw': raw_message}
 
 
-def send_email(to: str, subject: str, html_body: str, from_email: Optional[str] = None,
+def send_email(to: str, subject: str, body: str, from_email: Optional[str] = None,
                credentials_file: Optional[str] = None, token_file: Optional[str] = None) -> Dict[str, Any]:
-    """Envía un email simple en HTML usando Gmail API."""
+    """Envía un email simple en texto plano usando Gmail API."""
     try:
         credentials_path = credentials_file or os.getenv('GMAIL_CREDENTIALS_FILE', 'gmail_credentials.json')
         token_path = token_file or os.getenv('GMAIL_TOKEN_FILE', 'gmail_token.json')
 
         service = _authenticate_gmail(credentials_path, token_path, scopes=SCOPES_SEND)
-        message = _create_message(to, subject, html_body, from_email)
+        message = _create_message(to, subject, body, from_email)
         sent = service.users().messages().send(userId='me', body=message).execute()
 
         return {

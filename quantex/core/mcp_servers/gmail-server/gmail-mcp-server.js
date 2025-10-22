@@ -51,6 +51,10 @@ class QuantexGmailServer {
                   type: 'string',
                   description: 'Cuerpo del email (HTML)'
                 },
+                attachment_url: {
+                  type: 'string',
+                  description: 'URL del PDF para adjuntar'
+                },
                 from_email: {
                   type: 'string',
                   description: 'Email remitente (opcional)'
@@ -139,16 +143,26 @@ class QuantexGmailServer {
   }
 
   async sendEmail(args) {
-    const { to, subject, body, from_email, tracking_id } = args;
+    const { to, subject, body, attachment_url, from_email, tracking_id } = args;
     
     // Importar y usar tu GmailSender existente
     const { exec } = await import('child_process');
     const { promisify } = await import('util');
+    const { writeFileSync, unlinkSync } = await import('fs');
+    const { tmpdir } = await import('os');
+    const { join } = await import('path');
     const execAsync = promisify(exec);
 
-    const command = `python "base/scripts/gmail_sender.py" --to "${to}" --subject "${subject}" --body "${body}" ${from_email ? `--from "${from_email}"` : ''} ${tracking_id ? `--track "${tracking_id}"` : ''}`;
-
+    // Crear archivo temporal para el cuerpo del email
+    const tempFile = join(tmpdir(), `email_body_${Date.now()}.txt`);
     try {
+      writeFileSync(tempFile, body, 'utf8');
+      
+      const command = `python "base/scripts/gmail_sender.py" --to "${to}" --subject "${subject}" --body-file "${tempFile}" ${from_email ? `--from "${from_email}"` : ''} ${attachment_url ? `--attachment-url "${attachment_url}"` : ''} ${tracking_id ? `--track "${tracking_id}"` : ''}`;
+
+      console.log(`🔍 Comando ejecutado: ${command}`);
+      console.log(`📄 Contenido del archivo: ${body}`);
+
       const { stdout, stderr } = await execAsync(command);
       
       return {
@@ -168,6 +182,13 @@ class QuantexGmailServer {
           }
         ]
       };
+    } finally {
+      // Limpiar archivo temporal
+      try {
+        unlinkSync(tempFile);
+      } catch (e) {
+        // Ignorar errores de limpieza
+      }
     }
   }
 

@@ -566,7 +566,7 @@ def _build_html_from_template(template_file: str, synthesis_result: dict, dossie
             "summaries": dossier.summaries,
             "visualizations": dossier.visualizations,
             "titulo_informe": report_def.get("display_title", "Informe Quantex"),
-            "fecha_informe": datetime.now().strftime('%d de %B, %Y'),
+            "fecha_informe": datetime.now(timezone.utc).strftime('%d de %B, %Y').replace('October', 'octubre').replace('November', 'noviembre').replace('December', 'diciembre').replace('January', 'enero').replace('February', 'febrero').replace('March', 'marzo').replace('April', 'abril').replace('May', 'mayo').replace('June', 'junio').replace('July', 'julio').replace('August', 'agosto').replace('September', 'septiembre'),
             "artifact_id": new_artifact_id
         }
 
@@ -898,9 +898,44 @@ def run(parameters: dict) -> dict:
             new_artifact_id=new_artifact_id
         )
         
+        print(f"  -> 🔍 Verificando HTML final: {len(final_html) if final_html else 0} caracteres")
         if final_html:
+            print("  -> ✅ HTML final disponible - Iniciando actualización...")
             print("  -> 🔄 Actualizando artefacto con el HTML renderizado...")
+            print(f"  -> 📊 Tamaño del HTML final: {len(final_html)} caracteres")
             db.supabase.table('generated_artifacts').update({'full_content': final_html}).eq('id', new_artifact_id).execute()
+            
+            # Regenerar PDF con el HTML final
+            print("  -> 📄 Regenerando PDF con el HTML final...")
+            try:
+                pdf_bytes = db.html_to_pdf(final_html, report_keyword)
+                print(f"  -> 📊 PDF generado: {len(pdf_bytes) if pdf_bytes else 0} bytes")
+            except Exception as e:
+                print(f"  -> ❌ Error generando PDF: {e}")
+                pdf_bytes = None
+            
+            if pdf_bytes:
+                # Construir nueva ruta del archivo
+                from datetime import datetime, timezone
+                fecha = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+                ticker_part = getattr(dossier, 'ticker', None) or 'report'
+                artifact_id_short = str(new_artifact_id)[:8]
+                pdf_filename = f"{fecha}_{ticker_part}_{artifact_id_short}.pdf"
+                pdf_path = f"{report_keyword}/{pdf_filename}"
+                
+                # Subir nuevo PDF a Storage
+                pdf_url = db.upload_pdf_to_storage(pdf_bytes, pdf_path)
+                
+                if pdf_url:
+                    # Actualizar artifact con la nueva URL del PDF
+                    db.supabase.table('generated_artifacts').update({'pdf_url': pdf_url}).eq('id', new_artifact_id).execute()
+                    print(f"  -> ✅ PDF regenerado exitosamente: {pdf_url}")
+                else:
+                    print("  -> ⚠️ Error subiendo PDF regenerado")
+            else:
+                print("  -> ⚠️ Error regenerando PDF")
+        else:
+            print("  -> ❌ NO HAY HTML FINAL - El PDF no se puede regenerar")
         
         _save_learnings_to_knowledge_graph(dossier, report_keyword)
 

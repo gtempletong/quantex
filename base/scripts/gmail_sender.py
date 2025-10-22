@@ -9,6 +9,7 @@ import base64
 import argparse
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -25,6 +26,15 @@ SCOPES = [
     'https://www.googleapis.com/auth/gmail.send',
     'https://www.googleapis.com/auth/gmail.readonly'
 ]
+
+# Template por defecto para el cuerpo del email
+DEFAULT_EMAIL_TEMPLATE = """Hola {recipient_name},
+
+Te adjunto el informe del {report_name}.
+
+Saludos,
+
+Gavin Templeton"""
 
 class GmailSender:
     def __init__(self, credentials_file=None, token_file=None):
@@ -66,24 +76,37 @@ class GmailSender:
         print("✅ Autenticado con Gmail API para envío")
         print("✅ Autenticado con Gmail API")
     
-    def create_message(self, to, subject, body, from_email=None):
-        """Crear mensaje de email (HTML)."""
+    def create_message(self, to, subject, body, from_email=None, attachments=None):
+        """Crear mensaje de email (solo PDF adjunto)."""
         message = MIMEMultipart()
         message['to'] = to
         message['subject'] = subject
         message['from'] = from_email or 'gavintempleton@gavintempleton.net'
         
-        # Agregar cuerpo del mensaje
-        message.attach(MIMEText(body, 'html'))
+        # Usar el cuerpo proporcionado
+        message.attach(MIMEText(body, 'plain'))
+        
+        # Agregar attachments si existen
+        if attachments:
+            for attachment_data in attachments:
+                attachment = MIMEApplication(
+                    attachment_data['content'],
+                    _subtype=attachment_data.get('subtype', 'pdf')
+                )
+                attachment.add_header(
+                    'Content-Disposition',
+                    f'attachment; filename="{attachment_data["filename"]}"'
+                )
+                message.attach(attachment)
         
         # Codificar en base64
         raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
         return {'raw': raw_message}
     
-    def send_email(self, to, subject, body, from_email=None):
-        """Enviar email (sin tracking)."""
+    def send_email(self, to, subject, body, from_email=None, attachments=None):
+        """Enviar email (sin tracking) con attachments opcionales."""
         try:
-            message = self.create_message(to, subject, body, from_email)
+            message = self.create_message(to, subject, body, from_email, attachments)
             
             sent_message = self.service.users().messages().send(
                 userId='me',
@@ -128,9 +151,13 @@ def main():
     parser.add_argument('--to', '-t', help='Dirección de email destinatario')
     parser.add_argument('--subject', '-s', help='Asunto del email')
     parser.add_argument('--body', '-b', help='Cuerpo del email (HTML o texto)')
-    parser.add_argument('--from', '-f', help='Dirección de email remitente (opcional)')
-    parser.add_argument('--test', action='store_true', help='Enviar email de prueba')
-    # Tracking eliminado
+    parser.add_argument('--body-file', help='Archivo con el cuerpo del email')
+    parser.add_argument('--attachment', '-a', help='Ruta al archivo PDF para adjuntar')
+    parser.add_argument('--attachment-url', help='URL del PDF para descargar y adjuntar')
+    parser.add_argument('--test', action='store_true', help='Modo de prueba')
+    parser.add_argument('--recipient-name', help='Nombre del destinatario para el template')
+    parser.add_argument('--report-name', help='Nombre del informe para el template')
+    parser.add_argument('--use-template', action='store_true', help='Usar template por defecto')
     
     args = parser.parse_args()
     
@@ -140,8 +167,11 @@ def main():
             print("❌ Error: --to es requerido cuando usas --test")
             sys.exit(1)
     else:
-        if not all([args.to, args.subject, args.body]):
-            print("❌ Error: --to, --subject y --body son requeridos (o usa --test)")
+        if not args.to or not args.subject:
+            print("❌ Error: --to y --subject son requeridos")
+            sys.exit(1)
+        if not args.body and not args.body_file and not args.use_template:
+            print("❌ Error: --body, --body-file o --use-template son requeridos")
             sys.exit(1)
     
     try:
@@ -158,15 +188,84 @@ def main():
             to_email = args.to
         else:
             subject = args.subject
-            body = args.body
             to_email = args.to
+            
+            # Leer cuerpo del email
+            if args.use_template:
+                # Usar template por defecto
+                recipient_name = args.recipient_name or "Cliente"
+                report_name = args.report_name or "día"
+                body = DEFAULT_EMAIL_TEMPLATE.format(
+                    recipient_name=recipient_name,
+                    report_name=report_name
+                )
+                print(f"📝 Usando template con: recipient_name='{recipient_name}', report_name='{report_name}'")
+                print(f"📝 Template resultante:\n{body}")
+            elif args.body_file:
+                # Leer desde archivo
+                try:
+                    with open(args.body_file, 'r', encoding='utf-8') as f:
+                        body = f.read()
+                    print(f"📄 Leyendo cuerpo desde archivo: {args.body_file}")
+                except Exception as e:
+                    print(f"❌ Error leyendo archivo de cuerpo: {e}")
+                    sys.exit(1)
+            elif args.body:
+                # Usar cuerpo directo
+                body = args.body
+            else:
+                print("❌ Error: Se requiere --body, --body-file o --use-template")
+                sys.exit(1)
+        
+        # Preparar attachments si existen
+        attachments = None
+        if args.attachment or args.attachment_url:
+            attachments = []
+            
+            if args.attachment:
+                # Adjuntar archivo local
+                try:
+                    with open(args.attachment, 'rb') as f:
+                        pdf_content = f.read()
+                    attachments.append({
+                        'content': pdf_content,
+                        'filename': os.path.basename(args.attachment),
+                        'subtype': 'pdf'
+                    })
+                    print(f"📎 Adjuntando archivo local: {args.attachment}")
+                except Exception as e:
+                    print(f"❌ Error leyendo archivo adjunto: {e}")
+                    sys.exit(1)
+            
+            if args.attachment_url:
+                # Descargar PDF desde URL
+                try:
+                    import requests
+                    response = requests.get(args.attachment_url)
+                    response.raise_for_status()
+                    
+                    # Extraer nombre del archivo de la URL
+                    filename = args.attachment_url.split('/')[-1]
+                    if not filename.endswith('.pdf'):
+                        filename = f"reporte_{filename}.pdf"
+                    
+                    attachments.append({
+                        'content': response.content,
+                        'filename': filename,
+                        'subtype': 'pdf'
+                    })
+                    print(f"📎 Descargando y adjuntando PDF desde URL: {args.attachment_url}")
+                except Exception as e:
+                    print(f"❌ Error descargando PDF desde URL: {e}")
+                    sys.exit(1)
         
         # Enviar email
         message_id = sender.send_email(
             to=to_email,
             subject=subject,
             body=body,
-            from_email=getattr(args, 'from', None)
+            from_email=getattr(args, 'from', None),
+            attachments=attachments
         )
         
         if message_id:

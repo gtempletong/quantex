@@ -928,6 +928,98 @@ def run_agent(user_query: str, auto_approve: bool = False) -> Dict[str, Any]:
             "response": result
         })
     
+def _execute_gmail_send_email(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Ejecuta envío de email via Gmail usando gmail_sender.py directamente."""
+    print("🔧 EJECUTANDO NUEVA FUNCIÓN _execute_gmail_send_email")
+    try:
+        import subprocess
+        import tempfile
+        import os
+        
+        to = params.get("to")
+        subject = params.get("subject", "")
+        body = params.get("body", "")
+        from_email = params.get("from_email")
+        attachment_url = params.get("attachment_url")
+        recipient_name = params.get("recipient_name")
+        report_name = params.get("report_name")
+        use_template = params.get("use_template", False)
+        
+        if not to:
+            return {"ok": False, "error": "Destinatario requerido"}
+        
+        # Si es una lista, tomar el primer email
+        if isinstance(to, list):
+            to = to[0] if to else None
+        
+        if not to:
+            return {"ok": False, "error": "Email de destinatario requerido"}
+        
+        # Construir comando
+        # Usar el ejecutable de Python del entorno virtual
+        python_exe = sys.executable
+        
+        cmd = [
+            python_exe, 'base/scripts/gmail_sender.py',
+            '--to', to,
+            '--subject', subject
+        ]
+        
+        # Si se usa template, no necesitamos body-file
+        if use_template:
+            cmd.append('--use-template')
+            if recipient_name:
+                cmd.extend(['--recipient-name', recipient_name])
+            if report_name:
+                cmd.extend(['--report-name', report_name])
+            temp_file_path = None
+        else:
+            # Crear archivo temporal para el cuerpo solo si no se usa template
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
+                temp_file.write(body)
+                temp_file_path = temp_file.name
+            cmd.extend(['--body-file', temp_file_path])
+        
+        if from_email:
+            cmd.extend(['--from', from_email])
+        
+        if attachment_url:
+            cmd.extend(['--attachment-url', attachment_url])
+        
+        try:
+            
+            # Ejecutar comando
+            print(f"    🐍 Python ejecutable: {python_exe}")
+            print(f"    🔨 Comando completo: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.getcwd())
+            
+            print(f"    📤 STDOUT: {result.stdout}")
+            print(f"    📤 STDERR: {result.stderr}")
+            print(f"    📤 Return code: {result.returncode}")
+            
+            if result.returncode == 0:
+                # Intentar extraer el Message-ID real del stdout
+                import re
+                msg_id = None
+                m = re.search(r"ID:\s*([\w\-]+)", result.stdout)
+                if m:
+                    msg_id = m.group(1)
+                return {"ok": True, **({"message_id": msg_id} if msg_id else {}), "output": result.stdout}
+            else:
+                return {"ok": False, "error": f"Error ejecutando gmail_sender: {result.stderr}"}
+                
+        finally:
+            # Limpiar archivo temporal si existe
+            if temp_file_path:
+                try:
+                    os.unlink(temp_file_path)
+                except:
+                    pass
+        
+    except Exception as e:
+        return {"ok": False, "error": f"Error enviando email: {str(e)}"}
+
+
     return {
         "status": "completed",
         "plan": plan,

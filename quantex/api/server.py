@@ -35,12 +35,10 @@ from quantex.core import llm_manager
 from quantex.core.agent_tools import get_market_data, get_expert_opinion, fetch_stock_data, _extract_json_from_response
 from quantex.core.tools.technical_tools import calculate_all_indicators
 from quantex.core.tools.visualization_tools import generate_and_upload_clean_price_chart, generate_and_upload_full_indicator_chart
-from verticals.quantex_agora.airtable_manager import send_report_action
+from verticals.quantex_agora.airtable_manager import send_report_action, process_webhook_event_action
 from quantex.core.web_tools import get_perplexity_synthesis
 from quantex.core.agent_tools import get_file_content
-from verticals.quantex_agora.airtable_manager import send_report_action
 import verticals.quantex_agora.airtable_manager as agora
-from verticals.quantex_agora.airtable_manager import process_webhook_event_action
 from quantex.core.interactive_tools import answer_report_question_with_reasoning
 from quantex.core.interactive_tools import get_evidence_for_conclusion
 

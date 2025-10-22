@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or 'Comité Técnico' }}</title>
+    
+    <style>
+        /* Configuración de página */
+        @page {
+            size: A4;
+            margin: 0.5in;
+            @bottom-center {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 10px;
+                color: #666;
+            }
+        }
+        
+        /* Reset y configuración base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #333;
+            background: white;
+        }
+        
+        /* PORTADA */
+        .portada {
+            text-align: center;
+            page-break-after: always;
+            padding-top: 1.5in;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        .titulo-principal {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            line-height: 1.2;
+        }
+        
+        .subtitulo {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        
+        .fecha-ticker {
+            font-size: 12px;
+            color: #34495e;
+            margin-bottom: 40px;
+        }
+        
+        .footer-portada {
+            position: absolute;
+            bottom: 0.5in;
+            left: 0.5in;
+            right: 0.5in;
+            text-align: center;
+            font-size: 10px;
+            color: #7f8c8d;
+            border-top: 1px solid #bdc3c7;
+            padding-top: 10px;
+        }
+        
+        /* SECCIONES */
+        .seccion {
+            page-break-before: always;
+            margin-bottom: 20px;
+        }
+        
+        .seccion-primera {
+            page-break-before: auto;
+        }
+        
+        .titulo-seccion {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #3498db;
+            page-break-after: avoid;
+        }
+        
+        .subtitulo-seccion {
+            font-size: 14px;
+            font-weight: bold;
+            color: #34495e;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            page-break-after: avoid;
+        }
+        
+        /* CONTENIDO */
+        p {
+            margin-bottom: 8px;
+            text-align: justify;
+            text-indent: 0;
+        }
+        
+        ul, ol {
+            margin-bottom: 10px;
+            padding-left: 20px;
+        }
+        
+        li {
+            margin-bottom: 4px;
+        }
+        
+        /* GRÁFICOS */
+        .contenedor-grafico {
+            text-align: center;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        .contenedor-grafico img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .titulo-grafico {
+            font-size: 12px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        
+        /* TABLAS */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            page-break-inside: avoid;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px 8px;
+            text-align: left;
+            font-size: 10px;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        /* RESUMEN EJECUTIVO */
+        .resumen-ejecutivo {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        .recomendacion {
+            font-weight: bold;
+            color: #e74c3c;
+            font-size: 12px;
+        }
+        
+        .niveles-operativos {
+            background-color: #ecf0f1;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            page-break-inside: avoid;
+        }
+        
+        /* ANÁLISIS TÉCNICO */
+        .analisis-chartista {
+            border-left: 4px solid #e67e22;
+            padding-left: 15px;
+            margin: 15px 0;
+        }
+        
+        .analisis-quant {
+            border-left: 4px solid #9b59b6;
+            padding-left: 15px;
+            margin: 15px 0;
+        }
+        
+        /* UTILIDADES */
+        .page-break {
+            page-break-before: always;
+        }
+        
+        .no-break {
+            page-break-inside: avoid;
+        }
+        
+        .texto-centrado {
+            text-align: center;
+        }
+        
+        .texto-derecha {
+            text-align: right;
+        }
+        
+        .texto-pequeno {
+            font-size: 9px;
+            color: #7f8c8d;
+        }
+        
+        /* FOOTER DE SECCIÓN */
+        .footer-seccion {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #ecf0f1;
+            font-size: 9px;
+            color: #7f8c8d;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- PORTADA -->
+    <div class="portada">
+        <div class="logo">QUANTEX</div>
+        <div class="titulo-principal">{{ title or 'Comité Técnico' }}</div>
+        <div class="subtitulo">Análisis Técnico Especializado</div>
+        
+        {% if ticker %}
+        <div class="fecha-ticker">
+            <strong>Instrumento:</strong> {{ ticker }}<br>
+            {% if fecha %}
+            <strong>Fecha de Análisis:</strong> {{ fecha }}
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <div class="footer-portada">
+            Generado el {{ generated_at or 'N/A' }} | Quantex Research
+        </div>
+    </div>
+    
+    <!-- RESUMEN EJECUTIVO -->
+    <div class="seccion seccion-primera">
+        <h1 class="titulo-seccion">Resumen Ejecutivo</h1>
+        
+        <div class="resumen-ejecutivo">
+            {% if executive_summary %}
+                {{ executive_summary | safe }}
+            {% else %}
+                <p>No se encontró resumen ejecutivo en el reporte.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- ANÁLISIS CHARTISTA -->
+    <div class="seccion">
+        <h1 class="titulo-seccion">Análisis Chartista</h1>
+        <div class="analisis-chartista">
+            {% if chartist_analysis %}
+                {{ chartist_analysis | safe }}
+            {% else %}
+                <p>No se encontró análisis chartista en el reporte.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- ANÁLISIS QUANT -->
+    <div class="seccion">
+        <h1 class="titulo-seccion">Análisis Cuantitativo</h1>
+        <div class="analisis-quant">
+            {% if quant_analysis %}
+                {{ quant_analysis | safe }}
+            {% else %}
+                <p>No se encontró análisis cuantitativo en el reporte.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- GRÁFICOS DE EVIDENCIA -->
+    <div class="seccion">
+        <h1 class="titulo-seccion">Gráficos de Evidencia</h1>
+        
+        {% if charts %}
+            <div class="contenedor-grafico">
+                {{ charts | safe }}
+            </div>
+        {% else %}
+            <p class="texto-centrado texto-pequeno">
+                No se encontraron gráficos en el reporte.
+            </p>
+        {% endif %}
+    </div>
+    
+    <!-- PIE DE PÁGINA FINAL -->
+    <div class="seccion">
+        <div class="footer-seccion">
+            <p>Este reporte ha sido generado automáticamente por el sistema Quantex.</p>
+            <p>Para consultas técnicas, contactar al equipo de investigación.</p>
+        </div>
+    </div>
+    
+</body>
+</html>

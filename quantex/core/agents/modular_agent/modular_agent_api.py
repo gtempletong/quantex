@@ -493,11 +493,11 @@ def execute_query():
 
 @app.route('/api/send-report', methods=['POST'])
 def send_report():
-    """Endpoint específico para envío masivo de reportes (sin LLM)"""
+    """Endpoint específico para envío masivo de reportes con PDF adjunto"""
     try:
         data = request.get_json()
         recipients = data.get('recipients', [])
-        report_html = data.get('report_html', '')
+        report_topic = data.get('report_topic', '')
         subject = data.get('subject', 'Reporte Quantex')
         
         if not recipients:
@@ -506,35 +506,98 @@ def send_report():
                 'error': 'No se proporcionaron destinatarios'
             }), 400
             
-        if not report_html:
+        if not report_topic:
             return jsonify({
                 'success': False,
-                'error': 'No se proporcionó contenido HTML del reporte'
+                'error': 'No se proporcionó el tópico del reporte'
             }), 400
         
         print(f"\n📧 Enviando reporte a {len(recipients)} destinatarios...")
         print(f"📋 Asunto: {subject}")
+        print(f"📊 Tópico: {report_topic}")
         
         # Importar execute_tool y db para usar directamente
         from quantex.core.agents.modular_agent.runner import execute_tool
         from quantex.core import database_manager as db
         from datetime import datetime, timezone
+        
+        # Nota: PostgREST no expone information_schema; evitamos introspección runtime
+        
+        # Obtener el último informe final desde Supabase
+        latest_report = db.get_latest_report(report_keyword=report_topic)
+        if not latest_report:
+            return jsonify({
+                'success': False,
+                'error': f'No se encontró un informe final para "{report_topic}". Genéralo primero.'
+            }), 400
+        
+        # Obtener URL del PDF
+        pdf_url = latest_report.get('pdf_url')
+        if not pdf_url:
+            return jsonify({
+                'success': False,
+                'error': f'El informe "{report_topic}" no tiene PDF generado. Regenera el informe.'
+            }), 400
+        
+        print(f"📎 PDF encontrado: {pdf_url}")
+        
+        # Mapeo de report_topic a nombre legible del informe
+        report_names = {
+            'clp': 'Peso Chileno',
+            'copper': 'Cobre',
+            'gold': 'Oro',
+            'silver': 'Plata'
+        }
+        report_name = report_names.get(report_topic, report_topic)
+        
+        # Crear subject personalizado
+        custom_subject = f"Informe del {report_name}"
+        
         results = []
         successful_sends = 0
         
         # Enviar a cada destinatario individualmente
         for email in recipients:
             try:
+                # Buscar nombre del destinatario EXCLUSIVAMENTE en active_contacts
+                contact_name = None
+                from quantex.core import database_manager as db_temp
+                email_norm = (email or '').strip()
+                print(f"    🔍 Buscando contacto (active_contacts): {email_norm}")
+                try:
+                    ac_res = db_temp.supabase.table('active_contacts') \
+                        .select('full_name') \
+                        .ilike('email', email_norm) \
+                        .limit(1) \
+                        .execute()
+                    if ac_res and ac_res.data:
+                        full_name = ac_res.data[0].get('full_name')
+                        contact_name = full_name.split()[0] if full_name else None
+                        print(f"    ✅ Nombre encontrado: {full_name}")
+                except Exception as lookup_err:
+                    print(f"    ❌ Error consultando active_contacts: {lookup_err}")
+
+                # Estricto: si no hay nombre en active_contacts, abortar
+                if not contact_name:
+                    return jsonify({
+                        'success': False,
+                        'error': f"No se encontró nombre en active_contacts para '{email}'."
+                    }), 400
+                
                 tool_call = {
                     "tool": "gmail.send_email",
                     "params": {
-                        "to": [email],
-                        "subject": subject,
-                        "html_body": report_html
+                        "to": email,
+                        "subject": custom_subject,
+                        "use_template": True,
+                        "recipient_name": contact_name or "Cliente",
+                        "report_name": report_name,
+                        "attachment_url": pdf_url
                     }
                 }
                 
                 print(f"  -> 📤 Enviando a: {email}")
+                print(f"  -> 🔍 Tool call: {tool_call}")
                 result = execute_tool(tool_call)
                 
                 # SIEMPRE guardar en email_messages (exitoso o fallido)
@@ -543,18 +606,25 @@ def send_report():
                     contact_id_val = None
                     company_id_val = None
                     
-                    contact_res = db.supabase.table('personas').select('id,rut_empresa').eq('email_contacto', email).limit(1).execute()
-                    if contact_res and contact_res.data:
-                        contact_id_val = contact_res.data[0].get('id')
-                        rut_emp = contact_res.data[0].get('rut_empresa')
-                        if rut_emp:
-                            emp_res = db.supabase.table('empresas').select('id').eq('rut_empresa', rut_emp).limit(1).execute()
-                            if emp_res and emp_res.data:
-                                company_id_val = emp_res.data[0].get('id')
+                    # Resolver contact_id/company_id solo si existen en 'personas'; no bloquear si no
+                    try:
+                        contact_res = db.supabase.table('personas').select('id,rut_empresa').eq('email_contacto', email).limit(1).execute()
+                        if contact_res and contact_res.data:
+                            contact_id_val = contact_res.data[0].get('id')
+                            rut_emp = contact_res.data[0].get('rut_empresa')
+                            if rut_emp:
+                                emp_res = db.supabase.table('empresas').select('id').eq('rut_empresa', rut_emp).limit(1).execute()
+                                if emp_res and emp_res.data:
+                                    company_id_val = emp_res.data[0].get('id')
+                    except Exception:
+                        pass
                     
                     # Determinar el estado del envío
                     sent_at = datetime.now(timezone.utc).isoformat() if result.get("ok") else None
                     message_id = result.get('message_id') if result.get("ok") else None
+                    
+                    # Construir el cuerpo del email para el registro
+                    email_body_text = f"Estimado {contact_name or 'Cliente'},\n\nTe adjunto el informe del {report_name}.\n\nSaludos,\nGavin Templeton"
                     
                     # Guardar en email_messages (siempre, exitoso o fallido)
                     payload = {
@@ -564,9 +634,9 @@ def send_report():
                         'from_email': '',  # Se llenará desde Gmail
                         'to_emails': [email],
                         'cc_emails': [],
-                        'subject': subject,
-                        'body_html': report_html,
-                        'body_text': '',  # Podríamos extraer texto del HTML si es necesario
+                        'subject': custom_subject,
+                        'body_html': '',
+                        'body_text': email_body_text,
                         'message_id': message_id,
                         'thread_id': None,
                         'sent_at': sent_at,  # null si falló
