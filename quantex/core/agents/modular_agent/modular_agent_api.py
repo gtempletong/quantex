@@ -584,14 +584,15 @@ def send_report():
                         'error': f"No se encontró nombre en active_contacts para '{email}'."
                     }), 400
                 
+                # Mensaje simple de texto plano
+                simple_body = f"Hola {contact_name},\n\nAdjunto encontrarás el informe del {report_name}.\n\nSaludos cordiales,\nGavin Templeton"
+                
                 tool_call = {
                     "tool": "gmail.send_email",
                     "params": {
                         "to": email,
                         "subject": custom_subject,
-                        "use_template": True,
-                        "recipient_name": contact_name or "Cliente",
-                        "report_name": report_name,
+                        "body": simple_body,
                         "attachment_url": pdf_url
                     }
                 }
@@ -631,16 +632,17 @@ def send_report():
                         'direction': 'sent',
                         **({'contact_id': contact_id_val} if contact_id_val is not None else {}),
                         **({'company_id': company_id_val} if company_id_val is not None else {}),
-                        'from_email': '',  # Se llenará desde Gmail
+                        'from_email': 'gavintempleton@gavintempleton.net',
                         'to_emails': [email],
                         'cc_emails': [],
                         'subject': custom_subject,
-                        'body_html': '',
+                        'body_html': simple_html,
                         'body_text': email_body_text,
                         'message_id': message_id,
                         'thread_id': None,
                         'sent_at': sent_at,  # null si falló
-                        'message_kind': 'other'
+                        'message_kind': 'other',
+                        'attachments': [{'filename': f'{report_name}.pdf', 'url': pdf_url}] if pdf_url else []
                     }
                     db.supabase.table('email_messages').insert(payload).execute()
                     
@@ -718,7 +720,22 @@ def execute_tool_endpoint():
             }), 400
         
         print(f"\n🔧 Ejecutando herramienta directa: {tool}")
-        print(f"📋 Parámetros: {params}")
+        
+        # Loggear parámetros de forma inteligente (ocultar contenido grande)
+        params_for_log = {}
+        for key, value in params.items():
+            if key == 'attachments' and isinstance(value, list):
+                # Mostrar solo la cantidad de attachments, no el contenido
+                params_for_log[key] = f"[{len(value)} archivo(s)]"
+            elif isinstance(value, str) and len(value) > 200:
+                # Truncar strings largos
+                params_for_log[key] = value[:200] + "..."
+            elif isinstance(value, dict) and 'content' in value and isinstance(value['content'], str) and len(value['content']) > 100:
+                # Truncar contenido base64
+                params_for_log[key] = f"{{... content: {len(value['content'])} chars ...}}"
+            else:
+                params_for_log[key] = value
+        print(f"📋 Parámetros: {params_for_log}")
         
         # Importar execute_tool
         from quantex.core.agents.modular_agent.runner import execute_tool

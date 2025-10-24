@@ -553,8 +553,63 @@ def _execute_gmail_send_email(params: Dict[str, Any]) -> Dict[str, Any]:
     """Envía email vía Gmail API usando la herramienta local (sin tracking)."""
     to_list = params.get("to", [])
     subject = params.get("subject", "").strip()
+    body = params.get("body", "").strip()
     html_body = params.get("html_body", "").strip()
     from_email = params.get("from_email")
+    use_template = params.get("use_template", False)
+    
+    # Manejar attachments
+    attachments = params.get("attachments", [])
+    attachment_url = params.get("attachment_url")
+    
+    # Si se especifica attachment_url, descargarlo y añadirlo
+    if attachment_url and not attachments:
+        try:
+            import requests
+            import base64
+            from urllib.parse import urlparse
+            
+            response = requests.get(attachment_url)
+            if response.status_code == 200:
+                # Extraer nombre de archivo de la URL
+                parsed_url = urlparse(attachment_url)
+                filename = parsed_url.path.split('/')[-1].split('?')[0] or 'reporte.pdf'
+                
+                # Convertir a base64
+                content_base64 = base64.b64encode(response.content).decode('utf-8')
+                
+                attachments = [{
+                    'filename': filename,
+                    'content': content_base64,
+                    'encoding': 'base64',
+                    'type': 'application/pdf'
+                }]
+        except Exception as e:
+            print(f"⚠️ Error descargando attachment: {e}")
+
+    # Si use_template=True, generar HTML desde plantilla
+    if use_template and not html_body:
+        template_params = {
+            "recipient_name": params.get("recipient_name", "Cliente"),
+            "recipient_company": params.get("recipient_company", ""),
+            "template_variables": params.get("template_variables", {}),
+            "subject_override": params.get("subject")
+        }
+        
+        # Inyectar variables adicionales como report_name
+        if params.get("report_name"):
+            template_params["template_variables"]["report_name"] = params["report_name"]
+        
+        # Generar email con plantilla
+        template_result = _execute_llm_compose_email_template(template_params)
+        
+        if not template_result.get("ok"):
+            return {"ok": False, "error": f"Error generando plantilla: {template_result.get('error')}"}
+        
+        html_body = template_result.get("html_content", "")
+        # Usar subject de la plantilla si no se especificó
+        if not subject and template_result.get("subject"):
+            subject = template_result["subject"]
 
     if isinstance(to_list, str):
         to_list = [to_list]
@@ -563,8 +618,14 @@ def _execute_gmail_send_email(params: Dict[str, Any]) -> Dict[str, Any]:
         return {"ok": False, "error": "Destinatario(s) requerido(s)"}
     if not subject:
         return {"ok": False, "error": "Asunto requerido"}
-    if not html_body:
-        return {"ok": False, "error": "Contenido HTML requerido"}
+    if not html_body and not body:
+        return {"ok": False, "error": "Contenido requerido (body o html_body)"}
+    
+    # Si body está vacío pero hay html_body, usar html_body
+    # Si html_body está vacío pero hay body, usar body
+    # Si ambos están vacíos y hay attachments, crear un body mínimo
+    if not body and not html_body and attachments:
+        body = "Adjunto encontrarás el documento solicitado."
 
     # Enviar uno por uno para reportar estado
     try:
@@ -573,12 +634,19 @@ def _execute_gmail_send_email(params: Dict[str, Any]) -> Dict[str, Any]:
 
         results = []
         for to in to_list:
-            res = gmail_send(to=to, subject=subject, html_body=html_body, from_email=from_email)
+            res = gmail_send(
+                to=to, 
+                subject=subject,
+                body=body if body else "",
+                html_body=html_body if html_body else None, 
+                from_email=from_email,
+                attachments=attachments
+            )
             results.append(res)
 
         all_ok = all(r.get("ok") for r in results)
         if all_ok:
-            return {"ok": True, "results": results}
+            return {"ok": True, "results": results, "message_id": results[0].get("message_id") if results else None}
         # Tomar el primer error disponible para mostrarlo claramente
         first_error = None
         for r in results:
@@ -928,98 +996,6 @@ def run_agent(user_query: str, auto_approve: bool = False) -> Dict[str, Any]:
             "response": result
         })
     
-def _execute_gmail_send_email(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Ejecuta envío de email via Gmail usando gmail_sender.py directamente."""
-    print("🔧 EJECUTANDO NUEVA FUNCIÓN _execute_gmail_send_email")
-    try:
-        import subprocess
-        import tempfile
-        import os
-        
-        to = params.get("to")
-        subject = params.get("subject", "")
-        body = params.get("body", "")
-        from_email = params.get("from_email")
-        attachment_url = params.get("attachment_url")
-        recipient_name = params.get("recipient_name")
-        report_name = params.get("report_name")
-        use_template = params.get("use_template", False)
-        
-        if not to:
-            return {"ok": False, "error": "Destinatario requerido"}
-        
-        # Si es una lista, tomar el primer email
-        if isinstance(to, list):
-            to = to[0] if to else None
-        
-        if not to:
-            return {"ok": False, "error": "Email de destinatario requerido"}
-        
-        # Construir comando
-        # Usar el ejecutable de Python del entorno virtual
-        python_exe = sys.executable
-        
-        cmd = [
-            python_exe, 'base/scripts/gmail_sender.py',
-            '--to', to,
-            '--subject', subject
-        ]
-        
-        # Si se usa template, no necesitamos body-file
-        if use_template:
-            cmd.append('--use-template')
-            if recipient_name:
-                cmd.extend(['--recipient-name', recipient_name])
-            if report_name:
-                cmd.extend(['--report-name', report_name])
-            temp_file_path = None
-        else:
-            # Crear archivo temporal para el cuerpo solo si no se usa template
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
-                temp_file.write(body)
-                temp_file_path = temp_file.name
-            cmd.extend(['--body-file', temp_file_path])
-        
-        if from_email:
-            cmd.extend(['--from', from_email])
-        
-        if attachment_url:
-            cmd.extend(['--attachment-url', attachment_url])
-        
-        try:
-            
-            # Ejecutar comando
-            print(f"    🐍 Python ejecutable: {python_exe}")
-            print(f"    🔨 Comando completo: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.getcwd())
-            
-            print(f"    📤 STDOUT: {result.stdout}")
-            print(f"    📤 STDERR: {result.stderr}")
-            print(f"    📤 Return code: {result.returncode}")
-            
-            if result.returncode == 0:
-                # Intentar extraer el Message-ID real del stdout
-                import re
-                msg_id = None
-                m = re.search(r"ID:\s*([\w\-]+)", result.stdout)
-                if m:
-                    msg_id = m.group(1)
-                return {"ok": True, **({"message_id": msg_id} if msg_id else {}), "output": result.stdout}
-            else:
-                return {"ok": False, "error": f"Error ejecutando gmail_sender: {result.stderr}"}
-                
-        finally:
-            # Limpiar archivo temporal si existe
-            if temp_file_path:
-                try:
-                    os.unlink(temp_file_path)
-                except:
-                    pass
-        
-    except Exception as e:
-        return {"ok": False, "error": f"Error enviando email: {str(e)}"}
-
-
     return {
         "status": "completed",
         "plan": plan,
