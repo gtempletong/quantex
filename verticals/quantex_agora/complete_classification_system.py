@@ -286,9 +286,9 @@ RESPONDE EN FORMATO JSON (solo el JSON, sin texto adicional):
                 "classification": normalized_classification,
                 "reasoning": {
                     "location": analysis.get("location_reasoning", ""),
-                    "size": analysis["size_reasoning"],
-                    "import_export": analysis["import_export_reasoning"],
-                    "final": analysis["final_reasoning"]
+                    "size": analysis.get("size_reasoning", ""),
+                    "import_export": analysis.get("import_export_reasoning", ""),
+                    "final": analysis.get("final_reasoning", "")
                 }
             }
             
@@ -590,6 +590,125 @@ INFORMACIÓN ADICIONAL:
         
         return unique_persons
     
+    def classify_person_with_ai(self, title: str, company_name: str, company_score: int) -> dict:
+        """Clasificación INTELIGENTE de persona usando Claude Sonnet 4"""
+        
+        if not title:
+            return {
+                "is_decision_maker": False,
+                "reasoning": "Sin título disponible",
+                "person_score": 0,
+                "decision_maker_score": 0
+            }
+        
+        prompt = f"""Eres un experto en clasificar contactos B2B para servicios de cobertura cambiaria y asesoría financiera.
+
+Analiza si esta persona es un tomador de decisiones financieras o estratégicas que podría necesitar servicios de tipo de cambio.
+
+INFORMACIÓN DE LA PERSONA:
+- Cargo/Título: {title}
+- Empresa: {company_name}
+- Score de la empresa: {company_score}/100
+
+CRITERIOS DE EVALUACIÓN:
+
+1. TOMADORES DE DECISIONES CLAVE (50 puntos):
+   ✅ C-Suite: CEO, CFO, COO, President, Managing Director
+   ✅ Directores/VPs Financieros: Finance Director, VP Finance, Treasurer, Controller
+   ✅ Board Members: Board Member, Board Advisor, Consejero, Director de Directorio
+   ✅ Owners/Partners: Dueño, Socio, Owner, Partner, Fundador
+   ✅ General Management: Gerente General, General Manager
+
+2. SENIOR CON RESPONSABILIDAD FINANCIERA (40 puntos):
+   ✅ Director/Gerente de áreas financieras: Accounting, Treasury, Budget, FP&A
+   ✅ Head/Leader de Finance, Operations con impacto financiero
+
+3. SENIOR SIN RESPONSABILIDAD FINANCIERA DIRECTA (20 puntos):
+   ⚠️ Directores/Gerentes de otras áreas (Marketing, HR, IT, Operations)
+   
+4. NO ES TOMADOR DE DECISIONES (0 puntos):
+   ❌ Coordinadores, Analistas, Asistentes, Ejecutivos junior
+   ❌ Roles operativos sin autoridad de decisión
+
+IMPORTANTE:
+- "Board Advisor" / "Consejero" → 50 puntos (alta influencia estratégica)
+- "Director" (sin área específica) → Asume 40 puntos (senior general)
+- "Manager" / "Gerente" + Finance keywords → 40-50 puntos
+- Considera variaciones en español e inglés
+
+RESPONDE EN FORMATO JSON (solo el JSON, sin texto adicional):
+{{
+  "is_decision_maker": true | false,
+  "decision_maker_level": "C-Suite/Owner" | "Senior Financial" | "Senior General" | "Not Decision Maker",
+  "decision_maker_score": <0, 20, 40 o 50>,
+  "reasoning": "<explicación breve de por qué tiene ese score>"
+}}"""
+
+        try:
+            import anthropic
+            import json
+            
+            client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+            
+            message = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=500,
+                temperature=0.2,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            response_text = message.content[0].text.strip()
+            
+            # Extraer JSON
+            if "```json" in response_text:
+                json_text = response_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in response_text:
+                json_text = response_text.split("```")[1].split("```")[0].strip()
+            else:
+                json_text = response_text.strip()
+            
+            analysis = json.loads(json_text)
+            
+            # Calcular person_score
+            base_score = company_score // 2
+            decision_score = analysis.get("decision_maker_score", 0)
+            person_score = min(base_score + decision_score, 100)
+            
+            return {
+                "is_decision_maker": analysis.get("is_decision_maker", False),
+                "reasoning": analysis.get("reasoning", ""),
+                "decision_maker_score": decision_score,
+                "person_score": person_score,
+                "decision_maker_level": analysis.get("decision_maker_level", "Not Decision Maker")
+            }
+            
+        except Exception as e:
+            print(f"      ⚠️ Error en clasificación con Claude: {e}")
+            # Fallback a sistema simple
+            title_lower = title.lower()
+            financial_keywords = ['cfo', 'ceo', 'board', 'director', 'gerente general', 'president', 'owner', 'socio']
+            is_financial = any(kw in title_lower for kw in financial_keywords)
+            
+            if is_financial:
+                score = 40
+                is_dm = True
+                reasoning = f"Cargo senior detectado: {title}"
+            else:
+                score = 0
+                is_dm = False
+                reasoning = f"No es tomador de decisiones: {title}"
+            
+            person_score = min((company_score // 2) + score, 100)
+            
+            return {
+                "is_decision_maker": is_dm,
+                "reasoning": reasoning,
+                "decision_maker_score": score,
+                "person_score": person_score
+            }
+    
     def is_financial_decision_maker(self, title: str, seniority: str) -> tuple:
         """Determina si la persona es tomador de decisiones financieras"""
         if not title:
@@ -684,19 +803,22 @@ INFORMACIÓN ADICIONAL:
             }
         
         # Si empresa es INCLUIR o REVISAR, analizar cada persona
-        print(f"   ✅ Empresa {company_classification} → Analizando personas individualmente")
+        print(f"   ✅ Empresa {company_classification} → Analizando personas individualmente con IA")
         updated_count = 0
         for person in persons:
             person_id = person['id']
             person_name = person['full_name']
             title = person.get('title', '')
-            seniority = person.get('seniority', '')
             
-            # Analizar si es tomador de decisiones
-            is_decision_maker, reason, decision_maker_score = self.is_financial_decision_maker(title, seniority)
+            print(f"      🤖 Analizando: {person_name} ({title})...")
             
-            # Calcular score
-            person_score = self.calculate_person_score(company_score, is_decision_maker, decision_maker_score)
+            # Clasificación INTELIGENTE con Claude
+            ai_result = self.classify_person_with_ai(title, company_name, company_score)
+            
+            is_decision_maker = ai_result['is_decision_maker']
+            person_score = ai_result['person_score']
+            decision_maker_score = ai_result['decision_maker_score']
+            reason = ai_result['reasoning']
             
             # Clasificación
             person_classification = self.determine_person_classification(person_score, is_decision_maker)

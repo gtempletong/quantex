@@ -111,7 +111,6 @@ class ApolloImporterV2:
         email = apollo_row.get('Email', '').strip()
         title = apollo_row.get('Title', '').strip()
         linkedin = apollo_row.get('Person Linkedin Url', '').strip()
-        seniority = apollo_row.get('Seniority', '').strip()
         
         # Teléfono
         phone = (
@@ -130,7 +129,6 @@ class ApolloImporterV2:
             'linkedin_url': linkedin if linkedin else None,
             'company_id': company_id,
             'company_name': company_name if company_name else None,
-            'seniority': seniority if seniority else None,
             'phone': phone if phone else None,
         }
         
