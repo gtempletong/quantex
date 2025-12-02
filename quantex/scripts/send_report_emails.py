@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """
-Script standalone para enviar reportes por email.
+Script standalone para enviar reportes por email (ENVÍO MASIVO).
 Se ejecuta desde Next.js vía subprocess.
 No requiere servidor Flask.
+
+⚠️ IMPORTANTE: Este script envía SOLO emails en TEXTO PLANO (sin HTML)
+para evitar filtros de spam y mejorar el deliverability.
 
 Uso:
     python send_report_emails.py
@@ -60,6 +63,10 @@ def main():
         input_data = json.loads(sys.stdin.read())
         recipients = input_data.get('recipients', [])
         report_topic = input_data.get('report_topic', '')
+        custom_subject = input_data.get('subject', '')
+        custom_body = input_data.get('body', '')
+        attach_report_clp = input_data.get('attach_report_clp', False)
+        attach_report_copper = input_data.get('attach_report_copper', False)
         
         if not recipients:
             print(json.dumps({'success': False, 'error': 'No se proporcionaron destinatarios'}))
@@ -92,27 +99,67 @@ def main():
         
         pdf_base64 = base64.b64encode(pdf_response.content).decode('utf-8')
         
-        # 4. Mapeo de nombres de reportes
+        # 4. Obtener y descargar reportes adicionales si están solicitados
+        additional_attachments = []
+        
+        if attach_report_clp:
+            print(f"📎 Obteniendo reporte CLP adicional...", file=sys.stderr)
+            clp_report = db.get_latest_report(report_keyword='clp')
+            if clp_report and clp_report.get('pdf_url'):
+                clp_pdf_response = requests.get(clp_report['pdf_url'])
+                if clp_pdf_response.status_code == 200:
+                    additional_attachments.append({
+                        'filename': 'clp_reporte.pdf',
+                        'content': base64.b64encode(clp_pdf_response.content).decode('utf-8'),
+                        'encoding': 'base64',
+                        'type': 'application/pdf'
+                    })
+                    print(f"  ✅ Reporte CLP agregado", file=sys.stderr)
+                else:
+                    print(f"  ⚠️ No se pudo descargar reporte CLP", file=sys.stderr)
+            else:
+                print(f"  ⚠️ Reporte CLP no encontrado", file=sys.stderr)
+        
+        if attach_report_copper:
+            print(f"📎 Obteniendo reporte Cobre adicional...", file=sys.stderr)
+            copper_report = db.get_latest_report(report_keyword='cobre')
+            if copper_report and copper_report.get('pdf_url'):
+                copper_pdf_response = requests.get(copper_report['pdf_url'])
+                if copper_pdf_response.status_code == 200:
+                    additional_attachments.append({
+                        'filename': 'cobre_reporte.pdf',
+                        'content': base64.b64encode(copper_pdf_response.content).decode('utf-8'),
+                        'encoding': 'base64',
+                        'type': 'application/pdf'
+                    })
+                    print(f"  ✅ Reporte Cobre agregado", file=sys.stderr)
+                else:
+                    print(f"  ⚠️ No se pudo descargar reporte Cobre", file=sys.stderr)
+            else:
+                print(f"  ⚠️ Reporte Cobre no encontrado", file=sys.stderr)
+        
+        # 5. Mapeo de nombres de reportes
         report_names = {
             'clp': 'Peso Chileno',
             'copper': 'Cobre',
+            'cobre': 'Cobre',
             'gold': 'Oro',
             'silver': 'Plata'
         }
         report_name = report_names.get(report_topic, report_topic)
         filename = f"{report_topic}_reporte.pdf"
         
-        # 5. Enviar a cada destinatario
+        # 6. Enviar a cada destinatario
         successful = 0
         failed = 0
         results = []
         
         for email in recipients:
             try:
-                # Buscar nombre del contacto
-                contact_result = db.supabase.table('active_contacts')\
+                # Buscar nombre del contacto en apollo_persons
+                contact_result = db.supabase.table('apollo_persons')\
                     .select('full_name')\
-                    .ilike('email', email)\
+                    .eq('email', email)\
                     .limit(1)\
                     .execute()
                 
@@ -122,20 +169,41 @@ def main():
                 
                 print(f"  → Enviando a: {email} ({first_name})", file=sys.stderr)
                 
-                # Crear mensaje de texto plano
-                body = f"Hola {first_name},\n\nAdjunto encontrarás el informe del {report_name}.\n\nSaludos cordiales,\nGavin Templeton"
+                # Usar body personalizado si está disponible, sino usar template por defecto
+                if custom_body:
+                    # Reemplazar {nombre} con el nombre del contacto si existe en el body
+                    body = custom_body.replace('{nombre}', first_name)
+                    # Convertir HTML a texto plano si es necesario (remover tags básicos)
+                    import re
+                    body = re.sub(r'<br\s*/?>', '\n', body)
+                    body = re.sub(r'<p>', '', body)
+                    body = re.sub(r'</p>', '\n\n', body)
+                    body = re.sub(r'<[^>]+>', '', body)  # Remover otros tags HTML
+                    body = body.strip()
+                else:
+                    # Template por defecto
+                    body = f"Hola {first_name},\n\nAdjunto encontrarás el informe del {report_name}.\n\nSaludos cordiales,\nGavin Templeton"
+                
+                # Construir lista de adjuntos (reporte principal + adicionales)
+                all_attachments = [{
+                    'filename': filename,
+                    'content': pdf_base64,
+                    'encoding': 'base64',
+                    'type': 'application/pdf'
+                }] + additional_attachments
+                
+                # Usar subject personalizado si está disponible
+                email_subject = custom_subject if custom_subject else f"Informe del {report_name}"
                 
                 # Enviar email directamente usando gmail_send_tool
+                # ✅ SOLO TEXTO PLANO (sin HTML)
                 result = send_email(
                     to=email,
-                    subject=f"Informe del {report_name}",
-                    body=body,
-                    attachments=[{
-                        'filename': filename,
-                        'content': pdf_base64,
-                        'encoding': 'base64',
-                        'type': 'application/pdf'
-                    }]
+                    subject=email_subject,
+                    body=body,          # ✅ Texto plano
+                    html_body=None,     # ❌ NUNCA HTML (explícito)
+                    from_email='gavintempleton@gavintempleton.net',
+                    attachments=all_attachments
                 )
                 
                 # Registrar en email_messages si fue exitoso
@@ -157,6 +225,17 @@ def main():
                     except Exception:
                         pass
                     
+                    # Construir lista de adjuntos para registrar en DB
+                    db_attachments = [{'filename': filename, 'url': pdf_url}]
+                    if attach_report_clp:
+                        clp_report = db.get_latest_report(report_keyword='clp')
+                        if clp_report and clp_report.get('pdf_url'):
+                            db_attachments.append({'filename': 'clp_reporte.pdf', 'url': clp_report['pdf_url']})
+                    if attach_report_copper:
+                        copper_report = db.get_latest_report(report_keyword='cobre')
+                        if copper_report and copper_report.get('pdf_url'):
+                            db_attachments.append({'filename': 'cobre_reporte.pdf', 'url': copper_report['pdf_url']})
+                    
                     # Insertar en email_messages
                     db.supabase.table('email_messages').insert({
                         'direction': 'sent',
@@ -165,14 +244,14 @@ def main():
                         'from_email': 'gavintempleton@gavintempleton.net',
                         'to_emails': [email],
                         'cc_emails': [],
-                        'subject': f"Informe del {report_name}",
+                        'subject': email_subject,
                         'body_html': '',
                         'body_text': body,
                         'message_id': result.get('message_id'),
                         'thread_id': None,
                         'sent_at': datetime.now(timezone.utc).isoformat(),
                         'message_kind': 'report',
-                        'attachments': [{'filename': filename, 'url': pdf_url}]
+                        'attachments': db_attachments
                     }).execute()
                     
                     print(f"    ✅ Enviado exitosamente", file=sys.stderr)
@@ -196,7 +275,7 @@ def main():
                     'error': str(e)
                 })
         
-        # 6. Imprimir resultado final a stdout
+        # 7. Imprimir resultado final a stdout
         print(json.dumps({
             'success': True,
             'successful_sends': successful,

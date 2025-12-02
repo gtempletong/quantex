@@ -4,6 +4,9 @@ Script standalone para enviar emails individuales desde el CRM.
 Se ejecuta desde Next.js vía subprocess.
 No requiere servidor Flask ni Modular Agent.
 
+⚠️ IMPORTANTE: Este script envía SOLO emails en TEXTO PLANO (sin HTML)
+para evitar filtros de spam y mejorar el deliverability.
+
 Uso:
     python send_individual_email.py
     
@@ -11,7 +14,7 @@ Lee JSON desde stdin:
     {
         "to": "cliente@empresa.com",
         "subject": "Asunto del email",
-        "html_body": "<p>Contenido HTML...</p>",
+        "body": "Contenido en texto plano...",  ← SOLO texto plano
         "attachments": [
             {
                 "filename": "documento.pdf",
@@ -60,7 +63,7 @@ def main():
         input_data = json.loads(sys.stdin.read())
         to = input_data.get('to', '')
         subject = input_data.get('subject', '')
-        html_body = input_data.get('html_body', '')
+        body = input_data.get('body', '')  # SOLO texto plano
         attachments = input_data.get('attachments', [])
         contact_id = input_data.get('contact_id')
         prospect_id = input_data.get('prospect_id')
@@ -74,19 +77,24 @@ def main():
             print(json.dumps({'ok': False, 'error': 'Asunto requerido'}))
             sys.exit(1)
         
-        if not html_body:
+        if not body:
             print(json.dumps({'ok': False, 'error': 'Contenido del email requerido'}))
             sys.exit(1)
         
         print(f"📧 Enviando email a: {to}", file=sys.stderr)
         print(f"📋 Asunto: {subject}", file=sys.stderr)
+        print(f"📝 Formato: TEXTO PLANO (sin HTML)", file=sys.stderr)
         print(f"📎 Attachments: {len(attachments)}", file=sys.stderr)
         
         # 2. Enviar email directamente usando gmail_send_tool
+        # GARANTIZAR 100% TEXTO PLANO (sin HTML)
+        plain_text_body = body if body else ''
+        
         result = send_email(
             to=to,
             subject=subject,
-            html_body=html_body,
+            body=plain_text_body,  # ✅ SIEMPRE texto plano
+            html_body=None,        # ❌ NUNCA HTML (explícitamente None)
             from_email='gavintempleton@gavintempleton.net',
             attachments=attachments if attachments else None
         )
@@ -103,11 +111,12 @@ def main():
             sent_at = datetime.now(timezone.utc).isoformat()
             
             # Determinar el tipo de mensaje
+            # Valores permitidos: 'intro', 'follow_up', 'report', 'other'
             message_kind = 'other'
             if prospect_id:
-                message_kind = 'prospect_outreach'
+                message_kind = 'intro'  # Email inicial a prospect
             elif contact_id:
-                message_kind = 'client_communication'
+                message_kind = 'follow_up'  # Email a cliente existente
             
             # Preparar attachments para BD
             db_attachments = []
@@ -125,8 +134,8 @@ def main():
                 'to_emails': [to],
                 'cc_emails': [],
                 'subject': subject,
-                'body_html': html_body,
-                'body_text': '',
+                'body_html': '',  # NUNCA HTML (siempre vacío)
+                'body_text': body,  # SOLO texto plano
                 'message_id': result.get('message_id'),
                 'thread_id': None,
                 'sent_at': sent_at,

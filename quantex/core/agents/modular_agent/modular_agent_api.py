@@ -563,11 +563,11 @@ def send_report():
                 contact_name = None
                 from quantex.core import database_manager as db_temp
                 email_norm = (email or '').strip()
-                print(f"    🔍 Buscando contacto (active_contacts): {email_norm}")
+                print(f"    🔍 Buscando contacto (apollo_persons): {email_norm}")
                 try:
-                    ac_res = db_temp.supabase.table('active_contacts') \
+                    ac_res = db_temp.supabase.table('apollo_persons') \
                         .select('full_name') \
-                        .ilike('email', email_norm) \
+                        .eq('email', email_norm) \
                         .limit(1) \
                         .execute()
                     if ac_res and ac_res.data:
@@ -575,7 +575,7 @@ def send_report():
                         contact_name = full_name.split()[0] if full_name else None
                         print(f"    ✅ Nombre encontrado: {full_name}")
                 except Exception as lookup_err:
-                    print(f"    ❌ Error consultando active_contacts: {lookup_err}")
+                    print(f"    ❌ Error consultando apollo_persons: {lookup_err}")
 
                 # Estricto: si no hay nombre en active_contacts, abortar
                 if not contact_name:

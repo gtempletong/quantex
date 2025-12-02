@@ -840,6 +840,85 @@ def promote_draft_to_final(draft_id: str) -> dict | None:
         print(f"❌ Error al promover el borrador {draft_id}: {e}")
         return None
 
+def regenerate_pdf_for_artifact(artifact_id: str) -> dict | None:
+    """
+    Regenera el PDF de un artifact existente usando su HTML actual (full_content).
+    Útil cuando se modifica el HTML manualmente y se necesita actualizar el PDF.
+    
+    Args:
+        artifact_id: ID del artifact a regenerar
+        
+    Returns:
+        dict: Artifact actualizado con nueva pdf_url o None si falla
+    """
+    if not supabase:
+        print("❌ Cliente de Supabase no disponible")
+        return None
+    
+    try:
+        print(f"\n🔄 Regenerando PDF para artifact: {artifact_id}")
+        
+        # 1. Obtener el artifact
+        artifact = get_artifact_by_id(artifact_id)
+        if not artifact:
+            print(f"❌ No se encontró artifact con ID: {artifact_id}")
+            return None
+        
+        # 2. Verificar que tiene HTML
+        html_content = artifact.get('full_content')
+        if not html_content or len(html_content.strip()) == 0:
+            print(f"❌ El artifact {artifact_id} no tiene contenido HTML (full_content vacío)")
+            return None
+        
+        report_keyword = artifact.get('report_keyword', 'report')
+        ticker = artifact.get('ticker', 'report')
+        
+        print(f"   📄 HTML encontrado: {len(html_content)} caracteres")
+        print(f"   📊 Report keyword: {report_keyword}")
+        print(f"   🏷️  Ticker: {ticker}")
+        
+        # 3. Generar PDF
+        print(f"   🔄 Generando PDF...")
+        pdf_bytes = html_to_pdf(html_content, report_keyword)
+        
+        if not pdf_bytes:
+            print(f"❌ No se pudo generar el PDF")
+            return None
+        
+        print(f"   ✅ PDF generado: {len(pdf_bytes)} bytes")
+        
+        # 4. Construir ruta del archivo (usar fecha actual para nueva versión)
+        fecha = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        artifact_id_short = str(artifact_id)[:8]
+        pdf_filename = f"{fecha}_{ticker}_{artifact_id_short}.pdf"
+        pdf_path = f"{report_keyword}/{pdf_filename}"
+        
+        # 5. Subir a Storage (sobrescribe si existe)
+        print(f"   📤 Subiendo PDF a Storage...")
+        pdf_url = upload_pdf_to_storage(pdf_bytes, pdf_path)
+        
+        if not pdf_url:
+            print(f"❌ No se pudo subir el PDF a Storage")
+            return None
+        
+        # 6. Actualizar artifact con nueva URL
+        print(f"   💾 Actualizando artifact con nueva URL...")
+        supabase.table('generated_artifacts').update({'pdf_url': pdf_url}).eq('id', artifact_id).execute()
+        
+        # 7. Recuperar artifact actualizado
+        updated_artifact = get_artifact_by_id(artifact_id)
+        
+        print(f"✅ PDF regenerado exitosamente!")
+        print(f"   🔗 URL: {pdf_url}")
+        
+        return updated_artifact
+        
+    except Exception as e:
+        print(f"❌ Error regenerando PDF para artifact {artifact_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
 def save_learnings_to_knowledge_graph(topic: str, learnings: list):
     """
     (Versión 2.1 - Grafo Unificado con Labels Únicos)

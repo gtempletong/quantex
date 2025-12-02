@@ -8,7 +8,9 @@ import os
 import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional, Dict, Any
+from email.mime.base import MIMEBase
+from email import encoders
+from typing import Optional, Dict, Any, List
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -69,28 +71,92 @@ def _authenticate_gmail(credentials_file: Optional[str], token_file: Optional[st
     return build('gmail', 'v1', credentials=creds)
 
 
-def _create_message(to_email: str, subject: str, body: str, from_email: Optional[str]) -> Dict[str, Any]:
+def _create_message(to_email: str, subject: str, body: str, from_email: Optional[str], 
+                   html_body: Optional[str] = None, attachments: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    """
+    Crea un mensaje de email con soporte para HTML y attachments.
+    
+    attachments: Lista de diccionarios con formato:
+        [{
+            'filename': 'archivo.pdf',
+            'content': 'base64_encoded_content',  # Para archivos manuales
+            'encoding': 'base64',
+            'type': 'application/pdf'
+        }]
+        O con URL (para PDFs de Supabase):
+        [{
+            'filename': 'archivo.pdf',
+            'url': 'https://supabase.co/storage/...',  # Para PDFs desde URL
+            'type': 'application/pdf'
+        }]
+    """
+    import requests
+    
     message = MIMEMultipart()
     message['to'] = to_email
     message['subject'] = subject
     if from_email:
         message['from'] = from_email
 
-    message.attach(MIMEText(body, 'plain'))
+    # Adjuntar body (HTML o plain text)
+    if html_body:
+        message.attach(MIMEText(html_body, 'html'))
+    else:
+        message.attach(MIMEText(body, 'plain'))
+
+    # Adjuntar archivos si existen
+    if attachments:
+        for attachment in attachments:
+            part = MIMEBase('application', 'octet-stream')
+            
+            # Verificar si es URL o base64
+            if 'url' in attachment:
+                # Descargar archivo desde URL
+                try:
+                    response = requests.get(attachment['url'], timeout=30)
+                    response.raise_for_status()
+                    file_content = response.content
+                    part.set_payload(file_content)
+                except Exception as e:
+                    print(f"⚠️ Error descargando attachment desde URL: {e}")
+                    continue
+            else:
+                # Decodificar desde base64
+                part.set_payload(base64.b64decode(attachment['content']))
+            
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f'attachment; filename="{attachment["filename"]}"')
+            if attachment.get('type'):
+                part.set_type(attachment['type'])
+            message.attach(part)
 
     raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
     return {'raw': raw_message}
 
 
-def send_email(to: str, subject: str, body: str, from_email: Optional[str] = None,
+def send_email(to: str, subject: str, body: str = '', html_body: Optional[str] = None, from_email: Optional[str] = None,
+               attachments: Optional[List[Dict[str, Any]]] = None,
                credentials_file: Optional[str] = None, token_file: Optional[str] = None) -> Dict[str, Any]:
-    """Envía un email simple en texto plano usando Gmail API."""
+    """
+    Envía un email usando Gmail API con soporte para HTML y attachments.
+    
+    Args:
+        to: Email destinatario
+        subject: Asunto del email
+        body: Cuerpo en texto plano (opcional si se usa html_body)
+        html_body: Cuerpo en formato HTML (opcional)
+        from_email: Email remitente (opcional)
+        attachments: Lista de archivos adjuntos en formato base64
+        credentials_file: Ruta al archivo de credenciales OAuth
+        token_file: Ruta al archivo de token OAuth
+    """
     try:
-        credentials_path = credentials_file or os.getenv('GMAIL_CREDENTIALS_FILE', 'gmail_credentials.json')
-        token_path = token_file or os.getenv('GMAIL_TOKEN_FILE', 'gmail_token.json')
+        # Usar credenciales de negocio por defecto para envío
+        credentials_path = credentials_file or os.getenv('GMAIL_CREDENTIALS_FILE', 'gmail_credentials_business.json')
+        token_path = token_file or os.getenv('GMAIL_TOKEN_FILE', 'gmail_token_business.json')
 
         service = _authenticate_gmail(credentials_path, token_path, scopes=SCOPES_SEND)
-        message = _create_message(to, subject, body, from_email)
+        message = _create_message(to, subject, body, from_email, html_body, attachments)
         sent = service.users().messages().send(userId='me', body=message).execute()
 
         return {
@@ -98,7 +164,8 @@ def send_email(to: str, subject: str, body: str, from_email: Optional[str] = Non
             "message_id": sent.get('id'),
             "to": to,
             "subject": subject,
-            "from": from_email
+            "from": from_email,
+            "attachments_count": len(attachments) if attachments else 0
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}

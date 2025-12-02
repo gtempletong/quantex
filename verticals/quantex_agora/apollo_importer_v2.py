@@ -8,6 +8,7 @@ import os
 import sys
 import csv
 import logging
+import glob
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from dotenv import load_dotenv
@@ -43,16 +44,20 @@ class ApolloImporterV2:
         self.supabase = create_client(supabase_url, supabase_key)
         logger.info("Apollo Importer V2 inicializado")
     
-    def upsert_company(self, apollo_row: Dict) -> Optional[str]:
+    def upsert_company(self, apollo_row: Dict) -> Tuple[Optional[str], bool]:
         """
         Insertar o actualizar empresa
         
         Returns:
-            UUID de la empresa
+            Tupla (UUID de la empresa, fue_nuevo)
         """
         company_name = apollo_row.get('Company Name', '').strip()
         if not company_name:
-            return None
+            return None, False
+        
+        # Verificar si ya existe
+        existing = self.supabase.table('apollo_companies').select('id').eq('name', company_name).execute()
+        is_new = len(existing.data) == 0
         
         industry = apollo_row.get('Industry', '').strip()
         employees = apollo_row.get('# Employees', '').strip()
@@ -90,23 +95,23 @@ class ApolloImporterV2:
         ).execute()
         
         if result.data:
-            return result.data[0]['id']
+            return result.data[0]['id'], is_new
         
-        return None
+        return None, False
     
-    def upsert_person(self, apollo_row: Dict, company_id: Optional[str]) -> Optional[str]:
+    def upsert_person(self, apollo_row: Dict, company_id: Optional[str]) -> Tuple[Optional[str], bool]:
         """
         Insertar o actualizar persona
         
         Returns:
-            UUID de la persona
+            Tupla (UUID de la persona, fue_nuevo)
         """
         first_name = apollo_row.get('First Name', '').strip()
         last_name = apollo_row.get('Last Name', '').strip()
         full_name = f"{first_name} {last_name}".strip()
         
         if not full_name:
-            return None
+            return None, False
         
         email = apollo_row.get('Email', '').strip()
         title = apollo_row.get('Title', '').strip()
@@ -137,24 +142,24 @@ class ApolloImporterV2:
         if email:
             existing = self.supabase.table('apollo_persons').select('id').eq('email', email).execute()
             if existing.data:
-                # Actualizar
+                # Actualizar (ya existía)
                 result = self.supabase.table('apollo_persons').update(person_data).eq('id', existing.data[0]['id']).execute()
-                return existing.data[0]['id']
+                return existing.data[0]['id'], False
         
         # Si no existe por email, intentar con LinkedIn
         if linkedin:
             existing = self.supabase.table('apollo_persons').select('id').eq('linkedin_url', linkedin).execute()
             if existing.data:
-                # Actualizar
+                # Actualizar (ya existía)
                 result = self.supabase.table('apollo_persons').update(person_data).eq('id', existing.data[0]['id']).execute()
-                return existing.data[0]['id']
+                return existing.data[0]['id'], False
         
         # Insertar nuevo
         result = self.supabase.table('apollo_persons').insert(person_data).execute()
         if result.data:
-            return result.data[0]['id']
+            return result.data[0]['id'], True
         
-        return None
+        return None, False
     
     def import_csv(self, csv_path: str, dry_run: bool = False) -> Dict:
         """
@@ -166,7 +171,9 @@ class ApolloImporterV2:
         stats = {
             'total_rows': 0,
             'companies_created': 0,
+            'companies_updated': 0,
             'persons_created': 0,
+            'persons_updated': 0,
             'skipped': 0,
             'errors': []
         }
@@ -189,20 +196,28 @@ class ApolloImporterV2:
                         continue
                     
                     # 1. Upsert company
-                    company_id = self.upsert_company(row)
+                    company_id, company_is_new = self.upsert_company(row)
                     if company_id:
-                        stats['companies_created'] += 1
+                        if company_is_new:
+                            stats['companies_created'] += 1
+                        else:
+                            stats['companies_updated'] += 1
                     
                     # 2. Upsert person
-                    person_id = self.upsert_person(row, company_id)
+                    person_id, person_is_new = self.upsert_person(row, company_id)
                     if not person_id:
                         logger.warning(f"No se pudo crear persona: {row.get('Email', 'sin email')}")
                         stats['skipped'] += 1
                         continue
                     
-                    stats['persons_created'] += 1
+                    if person_is_new:
+                        stats['persons_created'] += 1
+                    else:
+                        stats['persons_updated'] += 1
+                    
                     name = f"{row.get('First Name', '')} {row.get('Last Name', '')}".strip()
-                    logger.info(f"✅ Importado: {name}")
+                    status = "✨ NUEVO" if person_is_new else "🔄 ACTUALIZADO"
+                    logger.info(f"{status}: {name}")
                     
                 except Exception as e:
                     error_msg = f"Error en fila {stats['total_rows']}: {e}"
@@ -216,9 +231,18 @@ class ApolloImporterV2:
         print("\n" + "=" * 60)
         print("📊 RESUMEN DE IMPORTACIÓN")
         print("=" * 60)
-        print(f"Total de filas procesadas: {stats['total_rows']}")
-        print(f"🏢 Empresas creadas/actualizadas: {stats['companies_created']}")
-        print(f"👤 Personas creadas/actualizadas: {stats['persons_created']}")
+        print(f"📄 Total de filas procesadas: {stats['total_rows']}")
+        print()
+        print(f"🏢 EMPRESAS:")
+        print(f"   ✨ Creadas (nuevas):   {stats['companies_created']}")
+        print(f"   🔄 Actualizadas (dup): {stats['companies_updated']}")
+        print(f"   📊 Total:              {stats['companies_created'] + stats['companies_updated']}")
+        print()
+        print(f"👤 PERSONAS:")
+        print(f"   ✨ Creadas (nuevas):   {stats['persons_created']}")
+        print(f"   🔄 Actualizadas (dup): {stats['persons_updated']}")
+        print(f"   📊 Total:              {stats['persons_created'] + stats['persons_updated']}")
+        print()
         print(f"⏭️  Saltados: {stats['skipped']}")
         print(f"❌ Errores: {len(stats['errors'])}")
         
@@ -235,9 +259,9 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Importar CSV de Apollo.io a Supabase (2 tablas: companies + persons)')
-    parser.add_argument('csv_file', nargs='?', default='exports/apollo-contacts-export.csv', 
-                       help='Ruta al archivo CSV de Apollo.io (por defecto: exports/apollo-contacts-export.csv)')
+    parser.add_argument('--single', help='Procesar un solo archivo CSV específico')
     parser.add_argument('--dry-run', action='store_true', help='Modo de prueba (no inserta)')
+    parser.add_argument('--exports-dir', default='exports', help='Directorio donde buscar CSVs (por defecto: exports)')
     
     args = parser.parse_args()
     
@@ -248,18 +272,96 @@ def main():
     try:
         importer = ApolloImporterV2()
         
-        stats = importer.import_csv(
-            csv_path=args.csv_file,
-            dry_run=args.dry_run
-        )
+        # Determinar qué archivos procesar
+        if args.single:
+            # Modo single: procesar un solo archivo
+            csv_files = [args.single]
+            print(f"\n📄 Modo SINGLE: Procesando 1 archivo")
+        else:
+            # Modo batch: procesar todos los CSVs en exports/
+            csv_pattern = os.path.join(args.exports_dir, "*.csv")
+            csv_files = glob.glob(csv_pattern)
+            
+            if not csv_files:
+                print(f"\n❌ No se encontraron archivos CSV en: {args.exports_dir}/")
+                return
+            
+            print(f"\n📦 Modo BATCH: Encontrados {len(csv_files)} archivos CSV")
+            print(f"📁 Directorio: {args.exports_dir}/")
+            for i, f in enumerate(csv_files, 1):
+                print(f"   {i}. {os.path.basename(f)}")
+            print()
         
-        importer.print_summary(stats)
+        # Procesar cada archivo
+        total_stats = {
+            'files_processed': 0,
+            'total_rows': 0,
+            'companies_created': 0,
+            'companies_updated': 0,
+            'persons_created': 0,
+            'persons_updated': 0,
+            'skipped': 0,
+            'errors': []
+        }
+        
+        for csv_file in csv_files:
+            print(f"\n{'='*60}")
+            print(f"📂 Procesando: {os.path.basename(csv_file)}")
+            print(f"{'='*60}")
+            
+            try:
+                stats = importer.import_csv(
+                    csv_path=csv_file,
+                    dry_run=args.dry_run
+                )
+                
+                # Acumular estadísticas
+                total_stats['files_processed'] += 1
+                total_stats['total_rows'] += stats['total_rows']
+                total_stats['companies_created'] += stats['companies_created']
+                total_stats['companies_updated'] += stats['companies_updated']
+                total_stats['persons_created'] += stats['persons_created']
+                total_stats['persons_updated'] += stats['persons_updated']
+                total_stats['skipped'] += stats['skipped']
+                total_stats['errors'].extend(stats['errors'])
+                
+                # Mostrar resumen del archivo
+                importer.print_summary(stats)
+                
+            except FileNotFoundError:
+                print(f"❌ Error: Archivo no encontrado: {csv_file}")
+                total_stats['errors'].append(f"Archivo no encontrado: {csv_file}")
+            except Exception as e:
+                print(f"❌ Error procesando {csv_file}: {e}")
+                total_stats['errors'].append(f"Error en {csv_file}: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Resumen final (si se procesaron múltiples archivos)
+        if len(csv_files) > 1:
+            print("\n" + "=" * 60)
+            print("📊 RESUMEN TOTAL DE TODOS LOS ARCHIVOS")
+            print("=" * 60)
+            print(f"📦 Archivos procesados: {total_stats['files_processed']}/{len(csv_files)}")
+            print(f"📄 Total de filas procesadas: {total_stats['total_rows']}")
+            print()
+            print(f"🏢 EMPRESAS:")
+            print(f"   ✨ Creadas (nuevas):   {total_stats['companies_created']}")
+            print(f"   🔄 Actualizadas (dup): {total_stats['companies_updated']}")
+            print(f"   📊 Total:              {total_stats['companies_created'] + total_stats['companies_updated']}")
+            print()
+            print(f"👤 PERSONAS:")
+            print(f"   ✨ Creadas (nuevas):   {total_stats['persons_created']}")
+            print(f"   🔄 Actualizadas (dup): {total_stats['persons_updated']}")
+            print(f"   📊 Total:              {total_stats['persons_created'] + total_stats['persons_updated']}")
+            print()
+            print(f"⏭️  Saltados: {total_stats['skipped']}")
+            print(f"❌ Errores totales: {len(total_stats['errors'])}")
+            print("=" * 60)
         
         if args.dry_run:
             print("\n💡 Este fue un DRY RUN. Ejecuta sin --dry-run para importar de verdad.")
         
-    except FileNotFoundError:
-        print(f"❌ Error: Archivo no encontrado: {args.csv_file}")
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback

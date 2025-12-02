@@ -16,7 +16,7 @@
     flex-shrink: 0;
 }
 
-.logo-container svg {
+.logo-container img {
     height: 50px;
     width: auto;
     margin-right: 20px;
@@ -77,7 +77,7 @@
         align-items: center;
     }
     
-    .logo-container svg {
+    .logo-container img {
         height: 40px;
         margin-right: 0;
         margin-bottom: 10px;
@@ -97,7 +97,7 @@
     margin-bottom: 15px;
 }
 
-.email-header .logo-container svg {
+.email-header .logo-container img {
     height: 45px;
     margin-right: 0;
 }

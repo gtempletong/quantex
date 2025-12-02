@@ -42,14 +42,137 @@ class CompleteClassificationSystem:
     
     # ==================== PARTE 1: ANÁLISIS DE EMPRESAS ====================
     
+    def get_website_content_with_jina(self, website: str) -> dict:
+        """Obtener contenido del website usando Jina AI Reader (con soporte para sitios regionales)"""
+        try:
+            import requests
+            
+            # Limpiar URL
+            if not website.startswith('http'):
+                website = f'https://{website}'
+            
+            print(f"   🌐 Obteniendo contenido del website con Jina AI...")
+            
+            # Intentar múltiples variantes regionales (Chile y Perú)
+            urls_to_try = []
+            
+            # Si el website es un dominio global, intentar versiones regionales primero
+            base_url = website.rstrip('/')
+            
+            # 1. Prioridad ALTA: Chile
+            urls_to_try.append(f"{base_url}/cl/es")  # Chile español
+            urls_to_try.append(f"{base_url}/cl")     # Chile
+            
+            # 2. Prioridad MEDIA: Perú (también relevante)
+            urls_to_try.append(f"{base_url}/pe/es")  # Perú español
+            urls_to_try.append(f"{base_url}/pe")     # Perú
+            
+            # 3. Prioridad BAJA: Latinoamérica
+            urls_to_try.append(f"{base_url}/latam")
+            urls_to_try.append(f"{base_url}/es")     # Español genérico
+            
+            # 4. Último recurso: Website original
+            urls_to_try.append(base_url)
+            
+            content = None
+            successful_url = None
+            
+            # Intentar cada URL hasta encontrar una que funcione
+            for url in urls_to_try:
+                try:
+                    jina_url = f"https://r.jina.ai/{url}"
+                    
+                    response = requests.get(
+                        jina_url,
+                        headers={
+                            "X-Return-Format": "markdown",
+                            "X-Timeout": "8"  # 8 segundos timeout por intento
+                        },
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200 and len(response.text) > 500:
+                        content = response.text
+                        successful_url = url
+                        
+                        # Detectar si es página regional de Chile/Perú
+                        if '/cl' in url.lower() or 'chile' in content.lower()[:2000]:
+                            print(f"   ✅ Encontrada página de CHILE: {url}")
+                            break  # Priorizar Chile
+                        elif '/pe' in url.lower() or 'perú' in content.lower()[:2000] or 'peru' in content.lower()[:2000]:
+                            print(f"   ✅ Encontrada página de PERÚ: {url}")
+                            break  # También buena opción
+                        else:
+                            print(f"   ℹ️  Página encontrada: {url} (continuando búsqueda regional...)")
+                            # Continuar buscando por si hay página específica de Chile
+                            
+                except Exception:
+                    continue  # Probar siguiente URL
+            
+            if content:
+                # Limitar tamaño (primeros 10,000 caracteres)
+                if len(content) > 10000:
+                    content = content[:10000] + "\n\n[... contenido truncado por tamaño ...]"
+                
+                print(f"   ✅ Contenido obtenido de {successful_url} ({len(content)} caracteres)")
+                
+                return {
+                    "success": True,
+                    "content": content,
+                    "source": "jina_ai_reader",
+                    "url": successful_url
+                }
+            else:
+                print(f"   ⚠️  No se pudo obtener contenido de ninguna variante")
+                return {
+                    "success": False,
+                    "error": "No se pudo acceder al website"
+                }
+                
+        except Exception as e:
+            print(f"   ⚠️  Error obteniendo contenido: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
     def analyze_company_with_perplexity(self, company: dict) -> dict:
-        """PASO 1: Análisis con Perplexity"""
+        """PASO 1: Análisis con Perplexity + contenido del website"""
         company_name = company['name']
         website = company['website']
         
-        question = f"¿A qué se dedica la empresa {company_name} (website: {website}) y qué tamaño tiene?"
+        # PASO 1A: Obtener contenido del website con Jina AI (si existe)
+        website_content = None
+        if website:
+            jina_result = self.get_website_content_with_jina(website)
+            if jina_result.get('success'):
+                website_content = jina_result.get('content')
         
-        print(f"   ❓ Pregunta: {question}")
+        # PASO 1B: Construir pregunta para Perplexity
+        if website_content:
+            # Si tenemos contenido del website, usarlo como contexto principal
+            question = (
+                f"Basándote en la siguiente información del sitio web oficial de {company_name} ({website}):\n\n"
+                f"--- CONTENIDO DEL WEBSITE ---\n{website_content}\n--- FIN CONTENIDO ---\n\n"
+                f"Y complementando con búsqueda web si es necesario, responde:\n"
+                f"1. ¿A qué se dedica esta empresa?\n"
+                f"2. ¿Qué productos o servicios ofrece?\n"
+                f"3. ¿Cuántos empleados tiene aproximadamente?\n"
+                f"4. ¿En qué industria/sector opera?\n"
+                f"5. ¿Cuál es su mercado objetivo?"
+            )
+            print(f"   ✅ Usando contenido del website ({len(website_content)} caracteres)")
+        elif website:
+            # Si no pudimos obtener el contenido, usar búsqueda web normal
+            question = (
+                f"Analiza la empresa {company_name} (website: {website}). "
+                f"Responde: ¿A qué se dedica? ¿Qué productos/servicios ofrece? "
+                f"¿Cuántos empleados tiene? ¿En qué industria opera?"
+            )
+        else:
+            # Sin website, búsqueda básica
+            question = f"¿A qué se dedica la empresa {company_name} y qué tamaño tiene?"
+        
         print(f"   🔍 Consultando Perplexity...")
         
         try:
@@ -59,19 +182,20 @@ class CompleteClassificationSystem:
                 return_full=True
             )
             
-            print(f"   ✅ Respuesta recibida")
+            print(f"   ✅ Respuesta de Perplexity recibida")
             
             return {
                 "company_id": company['id'],
                 "company_name": company_name,
                 "website": website,
+                "website_content": website_content,  # Guardar contenido del website
                 "company_country": company.get('country'),
                 "company_location": company.get('location'),
                 "question": question,
                 "perplexity_response": response.get("text") if isinstance(response, dict) else response,
                 "citations": response.get("citations") if isinstance(response, dict) else [],
                 "analysis_timestamp": datetime.now().isoformat(),
-                "model_used": "perplexity-sonar-pro"
+                "model_used": "perplexity-sonar-pro + jina-reader" if website_content else "perplexity-sonar-pro"
             }
             
         except Exception as e:
@@ -126,7 +250,7 @@ class CompleteClassificationSystem:
         else:
             return "Grande", 20  # ❌ Sin ventaja competitiva (grandes corporativos)
     
-    def analyze_company_with_ai_complete(self, perplexity_response: str, company_name: str, company_country: str = None, company_location: str = None) -> dict:
+    def analyze_company_with_ai_complete(self, perplexity_response: str, company_name: str, company_country: str = None, company_location: str = None, website_content: str = None) -> dict:
         """Análisis COMPLETO con Claude Sonnet 4 - TODO en una sola llamada"""
         
         # Contexto adicional de Apollo.io
@@ -138,11 +262,18 @@ class CompleteClassificationSystem:
             if company_location:
                 apollo_context += f"- Ubicación registrada: {company_location}\n"
         
+        # Contexto del website (si está disponible)
+        website_context = ""
+        if website_content:
+            website_context = f"\n\nCONTENIDO DEL SITIO WEB OFICIAL (fuente primaria):\n{website_content}\n"
+        
         prompt = f"""Eres un agente experto en clasificar empresas chilenas para servicios de cobertura cambiaria.
 
 Analiza la siguiente empresa y determina si es un buen target comercial.
 
-INFORMACIÓN DE LA EMPRESA:
+INFORMACIÓN DE LA EMPRESA:{website_context}
+
+ANÁLISIS DE PERPLEXITY (búsqueda web):
 {perplexity_response}{apollo_context}
 
 ⚠️ FILTRO GEOGRÁFICO:
@@ -183,25 +314,48 @@ CRITERIOS DE EVALUACIÓN:
 
 2. ACTIVIDAD DE IMPORTACIÓN/EXPORTACIÓN (máximo 50 puntos):
    
-   REGLA CLAVE: Chile NO fabrica localmente la mayoría de productos manufacturados, ingredientes industriales, maquinaria o tecnología.
+   ⚠️ REGLA CRÍTICA: Si NO importa NI exporta → 0 puntos → EXCLUIR automáticamente
    
-   Asigna 50 puntos SI:
+   Chile NO fabrica localmente la mayoría de productos manufacturados, ingredientes industriales, maquinaria o tecnología.
+   
+   Asigna 50 puntos SOLO SI:
    - Menciona explícitamente importación/exportación/comercio exterior
-   - Vende productos manufacturados (ropa, tecnología, productos para el hogar, etc.)
-   - Distribuye ingredientes, materias primas, equipamiento industrial
-   - Vende commodities chilenos (cobre, frutas, vino, salmón, madera)
-   - Provee/comercializa productos que Chile NO fabrica
+   - Vende/distribuye productos físicos manufacturados (ropa, tecnología, productos para el hogar)
+   - Distribuye ingredientes, materias primas, equipamiento industrial, maquinaria
+   - Vende commodities chilenos para exportación (cobre, frutas, vino, salmón, madera)
+   - Comercializa productos físicos que Chile NO fabrica
    
-   Asigna 0 puntos SI:
-   - Solo servicios locales (software, consultoría, servicios profesionales)
-   - Producción 100% local (panadería, pastelería fresca)
-   - Servicios presenciales (restaurantes, clínicas, gimnasios)
+   Asigna 0 puntos (EXCLUIR) SI:
+   - ❌ Plataformas digitales (marketplace, clasificados, e-commerce puro)
+   - ❌ Software/SaaS (aplicaciones, plataformas web, apps móviles)
+   - ❌ Servicios digitales puros (publicidad digital, marketing digital, redes sociales)
+   - ❌ Servicios locales (consultoría, servicios profesionales, asesorías)
+   - ❌ Producción 100% local (panadería, pastelería fresca, alimentos locales)
+   - ❌ Servicios presenciales (restaurantes, clínicas, gimnasios, salones, educación)
+   - ❌ Construcción, inmobiliarias (servicios locales sin comercio internacional)
+   
+   EJEMPLOS CRÍTICOS:
+   - "Yapo.cl (clasificados online)" → 0 puntos (plataforma digital local)
+   - "MercadoLibre" → 0 puntos (marketplace digital)
+   - "SaaS para gestión empresarial" → 0 puntos (software local)
+   - "Importadora de maquinaria industrial" → 50 puntos (importa productos físicos)
 
 3. CLASIFICACIÓN FINAL:
-   - EXCLUIR: Si la empresa NO está en Chile (filtro geográfico prioritario)
-   - EXCLUIR: Score < 50 (no es target)
-   - REVISAR: Score 50-69 (requiere evaluación manual)
-   - INCLUIR: Score >= 70 (target prioritario)
+   
+   ⚠️ REGLAS DE EXCLUSIÓN (orden de prioridad):
+   1. EXCLUIR: Si la empresa NO está en Chile (filtro geográfico)
+   2. EXCLUIR: Si NO tiene actividad de import/export (activity_score = 0)
+   3. EXCLUIR: Si score total < 50
+   
+   REGLAS DE INCLUSIÓN:
+   - REVISAR: Score 50-69 Y tiene import/export
+   - INCLUIR: Score >= 70 Y tiene import/export
+   
+   NOTA IMPORTANTE: Una empresa SOLO puede ser INCLUIR o REVISAR si:
+   - Opera en Chile ✅
+   - Y tiene actividad de importación/exportación ✅
+   
+   Sin import/export = EXCLUIR (sin excepciones)
 
 RESPONDE EN FORMATO JSON (solo el JSON, sin texto adicional):
 {{
@@ -262,6 +416,13 @@ RESPONDE EN FORMATO JSON (solo el JSON, sin texto adicional):
             
             print(f"      📊 Tamaño: {analysis['company_size']} ({analysis['size_score']} pts)")
             print(f"      🌐 Import/Export: {'Sí' if analysis['has_import_export'] else 'No'} ({analysis['activity_score']} pts)")
+            
+            # VALIDACIÓN CRÍTICA: Si NO importa/exporta → EXCLUIR automáticamente
+            if not analysis.get('has_import_export', False):
+                print(f"      ⚠️  SIN actividad de import/export → EXCLUIR automáticamente")
+                analysis['activity_score'] = 0
+                analysis['total_score'] = 0  # Score total = 0 si no importa/exporta
+                analysis['classification'] = 'EXCLUIR'
             
             # Normalizar clasificación (máximo 20 caracteres)
             raw_classification = analysis['classification']
@@ -446,6 +607,7 @@ INFORMACIÓN ADICIONAL:
         """PASO 2: Análisis con IA (VERSIÓN COMPLETA CON CLAUDE)"""
         company_name = perplexity_result['company_name']
         perplexity_response = perplexity_result.get('perplexity_response', '')
+        website_content = perplexity_result.get('website_content')  # Contenido del website de Jina
         
         if not perplexity_response:
             return {
@@ -456,6 +618,8 @@ INFORMACIÓN ADICIONAL:
         
         # INTENTAR ANÁLISIS COMPLETO CON CLAUDE
         print(f"\n   🤖 ANÁLISIS COMPLETO CON CLAUDE SONNET 4")
+        if website_content:
+            print(f"      ✅ Incluyendo contenido del website oficial")
         
         # Obtener country y location del resultado de Perplexity (viene de apollo_companies)
         company_country = perplexity_result.get('company_country')
@@ -465,7 +629,8 @@ INFORMACIÓN ADICIONAL:
             perplexity_response, 
             company_name,
             company_country,
-            company_location
+            company_location,
+            website_content  # Pasar contenido del website
         )
         
         if claude_analysis.get("success"):

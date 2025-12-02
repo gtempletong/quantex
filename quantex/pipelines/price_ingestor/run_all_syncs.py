@@ -239,18 +239,42 @@ def _get_series_id_by_ticker(ticker: str) -> str | None:
     return None
 
 
-def forward_fill_business_days_for_ticker(ticker: str) -> dict:
-    """Rellena días hábiles faltantes desde el último dato disponible hasta hoy.
-    - No crea fines de semana
-    - Upsert idempotente (series_id,timestamp)
+def forward_fill_business_days_for_ticker(ticker: str, lag_days: int = 0) -> dict:
+    """Rellena días hábiles faltantes desde el último dato REAL disponible hasta hoy.
+
+    Comportamiento:
+    - Usa como punto de partida el último dato cuya fecha sea <= hoy - lag_days.
+      Esto permite manejar series con desfase natural (ej: Posición Extranjera CLP).
+    - A partir de ese último dato real, vuelve a calcular TODOS los forward fill
+      hasta hoy, sobrescribiendo cualquier valor forward-filleado anterior.
+    - No crea fines de semana.
+    - Upsert idempotente (series_id,timestamp).
     """
     try:
         series_id = _get_series_id_by_ticker(ticker)
         if not series_id:
             return {"ticker": ticker, "filled": 0, "status": "series_not_found"}
 
-        # Último dato existente
-        last_res = supabase.table('time_series_data').select('timestamp,value').eq('series_id', series_id).order('timestamp', desc=True).limit(1).execute()
+        today = datetime.now().date()
+        # Para series con desfase natural (ej: BCCh), consideramos como "datos reales"
+        # solo aquellos con fecha <= effective_today. Los días posteriores se tratan
+        # como cola forward-filleada que puede ser recalculada.
+        if lag_days > 0:
+            effective_today = today - timedelta(days=lag_days)
+        else:
+            effective_today = today
+
+        # Último dato REAL existente (ignorando la posible cola de forward fill)
+        last_res = (
+            supabase.table('time_series_data')
+            .select('timestamp,value')
+            .eq('series_id', series_id)
+            .lte('timestamp', effective_today.strftime('%Y-%m-%d'))
+            .order('timestamp', desc=True)
+            .limit(1)
+            .execute()
+        )
+
         if not last_res or not last_res.data:
             return {"ticker": ticker, "filled": 0, "status": "no_existing_data"}
 
@@ -260,11 +284,14 @@ def forward_fill_business_days_for_ticker(ticker: str) -> dict:
         last_val = last_res.data[0]['value']
         last_date = datetime.strptime(last_ts_str, '%Y-%m-%d').date()
 
-        today = datetime.now().date()
+        # Si ya tenemos datos reales de hoy (o posteriores), no hay nada que rellenar.
+        # NOTA: la comparación es contra "today", no contra "effective_today".
+        #       Queremos siempre rellenar la cola desde el último dato REAL hasta hoy,
+        #       incluso cuando exista un desfase natural en la publicación (lag_days).
         if last_date >= today:
             return {"ticker": ticker, "filled": 0, "status": "up_to_date"}
 
-        # Rango de días hábiles desde el día siguiente al último dato hasta hoy
+        # Rango de días hábiles desde el día siguiente al último dato REAL hasta hoy
         start_bday = pd.Timestamp(last_date) + pd.tseries.offsets.BDay(1)
         if start_bday.date() > today:
             return {"ticker": ticker, "filled": 0, "status": "no_business_days_to_fill"}
@@ -284,18 +311,41 @@ def forward_fill_business_days_for_ticker(ticker: str) -> dict:
             upsert = supabase.table('time_series_data').upsert(records, on_conflict='series_id,timestamp').execute()
             if upsert and upsert.data is not None:
                 filled = len(records)
-        logging.info(f"ForwardFill[{ticker}]: desde {start_bday.date()} hasta {today} -> {filled} días hábiles")
-        return {"ticker": ticker, "filled": filled, "status": "ok", "from": start_bday.strftime('%Y-%m-%d'), "to": today.strftime('%Y-%m-%d')}
+
+        logging.info(
+            f"ForwardFill[{ticker}]: desde {start_bday.date()} (último real {last_date}, lag={lag_days}) "
+            f"hasta {today} -> {filled} días hábiles"
+        )
+        return {
+            "ticker": ticker,
+            "filled": filled,
+            "status": "ok",
+            "from": start_bday.strftime('%Y-%m-%d'),
+            "to": today.strftime('%Y-%m-%d'),
+            "last_real_date": last_date.strftime('%Y-%m-%d'),
+            "lag_days": lag_days,
+        }
 
     except Exception as e:
         logging.error(f"ForwardFill[{ticker}] error: {e}")
         return {"ticker": ticker, "filled": 0, "status": f"error: {e}"}
 
 
-def forward_fill_business_days_for_tickers(tickers: list[str]) -> dict:
+def forward_fill_business_days_for_tickers(
+    tickers: list[str],
+    lag_days_map: dict | None = None,
+) -> dict:
+    """Aplica forward fill diario a múltiples tickers.
+
+    - `lag_days_map` permite especificar, por ticker, cuántos días de desfase natural
+      tiene la serie (ej: {'Posicion Extranjera CLP': 2}).
+    - Los tickers que no aparecen en el mapa usan lag_days = 0 (comportamiento original).
+    """
     summary = {}
+    lag_days_map = lag_days_map or {}
     for t in tickers:
-        summary[t] = forward_fill_business_days_for_ticker(t)
+        lag = lag_days_map.get(t, 0)
+        summary[t] = forward_fill_business_days_for_ticker(t, lag_days=lag)
     return summary
 
 
@@ -516,7 +566,16 @@ def orchestrate_all_syncs():
             ]
 
             all_ff_tickers = smm_tickers + cochilco_inventory_tickers + bcch_tickers
-            ff_summary = forward_fill_business_days_for_tickers(all_ff_tickers)
+
+            # Mapa de desfases naturales por ticker.
+            # - Posición Extranjera CLP: serie diaria del BCCh con desfase de ~2 días.
+            #   Usamos lag_days=2 para que el último dato REAL siempre sea el punto
+            #   de partida del forward fill (evitando arrastrar colas antiguas).
+            lag_days_map = {
+                'Posicion Extranjera CLP': 2,
+            }
+
+            ff_summary = forward_fill_business_days_for_tickers(all_ff_tickers, lag_days_map=lag_days_map)
             report.add_result("ForwardFill Daily", True, ff_summary)
             logging.info(f"ForwardFill Daily resumen: {ff_summary}")
         except Exception as e:

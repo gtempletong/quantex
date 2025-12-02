@@ -235,6 +235,32 @@ def create_app():
         request_logger.info("/health ping")
         return jsonify({"ok": True})
 
+    @app.route('/api/copper-prices')
+    def _copper_prices():
+        """Endpoint simple para obtener precios de cobre - sin autenticación para Excel"""
+        try:
+            # Consultar la vista o tabla directamente
+            result = db.supabase.table('market_data_ohlcv')\
+                .select('timestamp, ticker, close')\
+                .eq('ticker', 'HG=F')\
+                .order('timestamp', desc=True)\
+                .limit(10000)\
+                .execute()
+            
+            # Formatear datos para Excel
+            data = []
+            for row in result.data:
+                data.append({
+                    'fecha': row['timestamp'],
+                    'ticker': row['ticker'],
+                    'precio_cierre': row['close']
+                })
+            
+            return jsonify(data)
+        except Exception as e:
+            print(f"Error en /api/copper-prices: {e}")
+            return jsonify({"error": str(e)}), 500
+
     print("🚀 QUANTEX: Iniciando y configurando sistema...")
 
     ai_services.initialize()
