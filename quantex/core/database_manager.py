@@ -1117,22 +1117,30 @@ def get_latest_report(report_keyword: str = None, ticker: str = None, artifact_t
             print(f"🛠️ [DB Manager] Buscando último informe final para ticker '{ticker}'...")
             
         else:
-            # Caso 3: Solo report_keyword - buscar el último informe de ese tipo (comportamiento original)
+            # Caso 3: Solo report_keyword - buscar el último informe de ese tipo
+            # Primero intentar con el sufijo especificado (normalmente _final)
             artifact_type = f'report_{normalized_report_keyword.replace(" ", "_")}{artifact_type_suffix}'
-            query = query.eq('artifact_type', artifact_type)
-            print(f"🛠️ [DB Manager] Buscando último informe '{normalized_report_keyword}'...")
+            query_with_suffix = query.eq('artifact_type', artifact_type)
+            print(f"🛠️ [DB Manager] Buscando último informe '{normalized_report_keyword}' (tipo: {artifact_type})...")
+            response = query_with_suffix.order('created_at', desc=True).limit(1).maybe_single().execute()
+            
+            # Si no encuentra con el sufijo específico, buscar cualquier reporte de ese keyword
+            if not response.data:
+                print(f"    -> 🔄 No se encontró con sufijo '{artifact_type_suffix}', buscando cualquier tipo...")
+                query_any = supabase.table('generated_artifacts').select('*')
+                query_any = query_any.eq('report_keyword', normalized_report_keyword)
+                query_any = query_any.not_('artifact_type', 'like', '%comite_tecnico%')
+                response = query_any.order('created_at', desc=True).limit(1).maybe_single().execute()
         
-        # Ejecutar consulta ordenada por fecha descendente
-        response = query.order('created_at', desc=True).limit(1).maybe_single().execute()
-        
-        if response.data:
+        if response and response.data:
             artifact_id = response.data.get('id', 'N/A')
             artifact_type = response.data.get('artifact_type', 'N/A')
             ticker_found = response.data.get('ticker', 'N/A')
-            print(f"    -> ✅ [DB] Artefacto encontrado: ID={artifact_id}, Tipo={artifact_type}, Ticker={ticker_found}")
+            created_at = response.data.get('created_at', 'N/A')
+            print(f"    -> ✅ [DB] Artefacto encontrado: ID={artifact_id[:8]}, Tipo={artifact_type}, Created={created_at}, Ticker={ticker_found}")
             return response.data
         else:
-            print(f"    -> 🟡 [DB] No se encontró artefacto.")
+            print(f"    -> 🟡 [DB] No se encontró artefacto para '{normalized_report_keyword}'.")
             return None
             
     except Exception as e:
